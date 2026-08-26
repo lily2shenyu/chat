@@ -29,7 +29,7 @@ jobs:
       - name: Prepare web assets
         run: |
           mkdir -p android/app/src/main/assets/www
-          cp -r index.html css js assets manifest.json sw.js icons android/app/src/main/assets/www/
+          cp -r index.html css js images manifest.json sw.js icons android/app/src/main/assets/www/
 
       - name: Build APK
         run: |
