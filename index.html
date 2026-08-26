@@ -15,12 +15,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" sizes="192x192" href="https://file.youtochat.com/images/20260216/1771224856844_qdqqd.jpeg">
     <link rel="apple-touch-icon" href="https://file.youtochat.com/images/20260216/1771224856844_qdqqd.jpeg">
+    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-title" content="ʚ𝑳𝑶𝑽𝑬ɞ">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/companion.css">
 
     <style id="css-live-preview-style"></style>
 </head>
@@ -197,8 +199,9 @@
             <div class="header-actions">
                 <button id="session-manager-btn" class="action-btn" title="会话管理"><i class="fas fa-comments"></i></button>
                 <button id="group-chat-btn" class="action-btn" title="群聊设置"><i class="fas fa-users"></i></button>
+                <button id="envelope-header-btn" class="action-btn" title="信箱"><i class="fas fa-envelope-open-text"></i></button>
+                <button id="companion-btn" class="action-btn" title="陪伴"><i class="fas fa-hand-holding-heart"></i></button>
                 <button id="daily-greeting-btn" class="action-btn" title="今日公告" onclick="reopenDailyGreeting()"><i class="fas fa-newspaper"></i></button>
-                <button id="theme-toggle" class="action-btn" title="切换主题"><i class="fas fa-moon"></i></button>
                 <button id="settings-btn" class="action-btn" title="设置"><i class="fas fa-cog"></i></button>
             </div>
              <div class="user-info">
@@ -336,6 +339,8 @@
         </div>
         <div class="input-area">
     <button id="collapse-expand-btn" title="展开更多" style="display:none;width:36px;height:36px;border:none;border-radius:50%;cursor:pointer;background:rgba(var(--accent-color-rgb),0.12);color:var(--accent-color);font-size:14px;transition:all 0.25s;flex-shrink:0;align-items:center;justify-content:center;" onclick="window.toggleCollapsedExtras && window.toggleCollapsedExtras()"><i class="fas fa-chevron-up"></i></button>
+    <!-- 视频通话按钮（替代原麦克风位置）-->
+    <button class="videocall-btn input-btn" id="videocall-btn" title="视频通话"><i class="fas fa-video"></i></button>
     <button class="attachment-btn input-btn collapse-hideable" id="attachment-btn" title="发送图片"><i class="fas fa-image"></i></button>
     
     <button class="combo-btn input-btn collapse-hideable" id="combo-btn" title="表情 & 拍一拍">
@@ -407,7 +412,7 @@
             <div class="modal-title">
                 <i class="fas fa-hand-sparkles"></i><span>拍一拍</span>
             </div>
-            <input type="text" class="modal-input" id="poke-input" placeholder="例如：拍了拍对方的肩膀"><div class="modal-buttons">
+            <input type="text" class="modal-input" id="poke-input" placeholder="例如：拍了拍（只填动作部分）"><div class="modal-buttons">
                 <div style="width:100%;display:flex;align-items:center;gap:8px;margin:6px 0 0;">
                     <input type="checkbox" id="poke-save-to-library" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent-color);">
                     <label for="poke-save-to-library" style="font-size:12px;color:var(--text-secondary);cursor:pointer;">保存到拍一拍库</label>
@@ -426,7 +431,7 @@
                 <path d="M1 29 L14 18" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
                 <path d="M39 29 L26 18" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
             </svg>
-            <div class="env-header-title">信 封 投 递</div>
+            <div class="env-header-title">信 箱</div>
             <div class="env-header-subtitle">Letters · Correspondence</div>
         </div>
 
@@ -463,8 +468,7 @@
                     <label for="env-send-to-chat" style="cursor:pointer; color:var(--text-secondary);">同时发送到聊天记录</label>
                 </div>
                 <div class="env-send-info">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    <span id="env-reply-time-info">对方将在 10-24 小时内回信（8-12 句话）</span>
+                    <span id="env-reply-time-info">传递你的心意吧</span>
                 </div>
                 <div style="display:flex;gap:8px;">
                     <button class="modal-btn modal-btn-secondary" id="cancel-compose" onclick="cancelEnvelopeCompose()" style="flex:1;">取消</button>
@@ -497,9 +501,9 @@
                     <span id="env-view-title" style="font-size:14px;font-weight:700;letter-spacing:2px;">信件内容</span>
                 </div>
                 <div style="border:2px solid rgba(255,255,255,0.5);border-radius:50%;width:48px;height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0.7;">
-                    <span style="font-size:7px;color:white;letter-spacing:0.5px;">已送达</span>
+                    <span id="env-view-stamp-label" style="font-size:7px;color:white;letter-spacing:0.5px;">已送达</span>
                     <span id="env-view-stamp-date" style="font-size:8px;color:white;font-weight:600;"></span>
-                    <span style="font-size:6px;color:white;opacity:0.8;">DELIVERED</span>
+                    <span id="env-view-stamp-sub" style="font-size:6px;color:white;opacity:0.8;">DELIVERED</span>
                 </div>
             </div>
         </div>
@@ -538,6 +542,7 @@
 
         <div class="modal-buttons" style="margin:0;padding:12px 18px 16px;border-top:1px solid var(--border-color);flex-shrink:0;">
             <button class="modal-btn modal-btn-secondary" id="close-env-view" onclick="closeEnvViewModal()">关闭</button>
+            <button class="modal-btn modal-btn-secondary" id="env-view-reply-btn" onclick="replyToEnvLetter()" style="display:none;">回复</button>
             <button class="modal-btn modal-btn-secondary" id="env-view-edit-btn" onclick="toggleEnvEdit()">编辑</button>
             <button class="modal-btn modal-btn-primary" id="env-view-save-btn" onclick="saveEnvEdit()" style="display:none;">保存</button>
         </div>
@@ -646,11 +651,174 @@
 
 
             <div class="modal-buttons">
-                <button class="modal-btn modal-btn-secondary" id="cancel-settings">关闭</button>
+                <span></span>
+                <button class="modal-btn modal-btn-secondary" id="cancel-settings" onclick="hideModal(document.getElementById('settings-modal'))">关闭</button>
             </div>
         </div>
     </div>
 
+
+    <!-- ========== 陪伴功能弹窗 ========== -->
+
+    <!-- ① 陪伴模式选择 -->
+    <div class="companion-modal" id="companion-modal">
+        <div class="modal-content companion-modal-content">
+            <div class="modal-title">
+                <i class="fas fa-hand-holding-heart"></i><span>陪伴</span>
+            </div>
+            <div class="companion-grid">
+                <div class="companion-mode-card" data-mode="study">
+                    <i class="fas fa-book-open"></i><span>一起学习</span>
+                </div>
+                <div class="companion-mode-card" data-mode="work">
+                    <i class="fas fa-laptop-code"></i><span>一起工作</span>
+                </div>
+                <div class="companion-mode-card" data-mode="exercise">
+                    <i class="fas fa-person-running"></i><span>一起运动</span>
+                </div>
+                <div class="companion-mode-card" data-mode="sleep">
+                    <i class="fas fa-moon"></i><span>一起睡觉</span>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-secondary" id="companion-modal-close">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ② 首次初始化弹窗 -->
+    <div class="companion-modal" id="setup-modal">
+        <div class="modal-content companion-setup-content">
+            <div class="modal-title">
+                <i id="setup-modal-icon" class="fas fa-book-open"></i>
+                <span id="setup-modal-title">陪我学习</span>
+            </div>
+            <div id="setup-step-bg">
+                <p class="companion-setup-desc">请上传一张梦角的图片或视频，作为陪伴背景 ✦</p>
+                <div id="setup-bg-preview" class="companion-bg-preview" style="display:none;"></div>
+                <div id="setup-bg-trigger" class="companion-upload-zone">
+                    <i class="fas fa-cloud-arrow-up"></i>
+                    <span>点击上传图片 / 视频</span>
+                    <small>支持 jpg · png · gif · mp4 · mov，建议 ≤ 100MB</small>
+                </div>
+                <input type="file" id="setup-bg-input" accept="image/*,video/*" style="display:none">
+                <div class="companion-setup-btns">
+                    <button class="modal-btn modal-btn-secondary" id="setup-btn-cancel">取消</button>
+                    <button class="modal-btn modal-btn-primary" id="setup-btn-next" style="display:none">
+                        下一步 <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="setup-step-voice" style="display:none;">
+                <p class="companion-setup-desc">上传梦角的语音，点击屏幕时会随机播放 ✦</p>
+                <div id="setup-voice-trigger" class="companion-upload-zone companion-upload-zone--small">
+                    <i class="fas fa-microphone"></i>
+                    <span>点击上传语音</span>
+                    <small>支持 mp3 · m4a · wav，可多选</small>
+                </div>
+                <input type="file" id="setup-voice-input" accept="audio/*" multiple style="display:none">
+                <div id="setup-voice-list" class="companion-voice-list"></div>
+                <div class="companion-setup-btns">
+                    <button class="modal-btn modal-btn-secondary" id="setup-btn-skip">跳过</button>
+                    <button class="modal-btn modal-btn-primary" id="setup-btn-finish">
+                        <i class="fas fa-check"></i> 完成
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ③ 时间选择弹窗 -->
+    <div class="companion-modal" id="time-modal">
+        <div class="modal-content companion-time-content">
+            <div class="modal-title">
+                <i id="time-modal-icon" class="fas fa-book-open"></i>
+                <span id="time-modal-title">陪我学习</span>
+            </div>
+            <p class="companion-setup-desc">选择本次陪伴时长</p>
+            <div id="time-options-grid" class="companion-time-grid"></div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-secondary" id="time-modal-close">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ④ 全屏陪伴页面 -->
+    <div id="companion-page" class="companion-page">
+        <div id="companion-bg-container" class="companion-bg-container"></div>
+        <div class="companion-overlay"></div>
+
+        <!-- 左上角退出 -->
+        <button id="companion-exit-btn" class="companion-ctrl-btn companion-exit-corner">
+            <i class="fas fa-xmark"></i>
+        </button>
+
+        <!-- 右上角玻璃球计时器 -->
+        <div id="companion-timer-area" class="companion-timer-glass">
+            <div id="companion-timer-display" class="companion-timer-display">00:00</div>
+            <div id="companion-timer-label" class="companion-timer-label">STUDY</div>
+            <div class="companion-timer-dots">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+
+        <!-- 底部场景提示 -->
+        <div class="companion-hint-bottom">
+            <span id="companion-hint-text">正在一起学习 · 加油</span>
+        </div>
+
+        <!-- ✦ 右下角背景音按钮 ✦ -->
+        <button id="companion-noise-btn" class="companion-ctrl-btn companion-noise-corner" title="背景音">
+            <i class="fas fa-music"></i>
+        </button>
+
+        <!-- ✦ 右下角对话历史按钮 ✦ -->
+        <button id="companion-history-btn" class="companion-ctrl-btn companion-history-corner" title="本次对话">
+            <i class="fas fa-comment-dots"></i>
+        </button>
+
+        <!-- ✦ 右下角键盘按钮（切换输入区） ✦ -->
+        <button id="companion-keyboard-btn" class="companion-ctrl-btn companion-keyboard-corner" title="发消息">
+            <i class="fas fa-keyboard"></i>
+        </button>
+
+        <!-- ✦ 陪伴输入区（默认隐藏） ✦ -->
+        <div id="companion-input-bar" class="companion-input-bar">
+            <input type="text" id="companion-input-field" class="companion-input-field" placeholder="说点什么吧…" maxlength="500">
+            <button id="companion-emoji-btn" class="companion-input-btn" title="表情包">
+                <i class="far fa-smile"></i>
+            </button>
+            <button id="companion-image-btn" class="companion-input-btn" title="图片">
+                <i class="far fa-image"></i>
+            </button>
+        </div>
+
+        <!-- ✦ 梦角气泡容器（点击时浮现） ✦ -->
+        <div id="companion-bubble-area" class="companion-bubble-area"></div>
+
+        <!-- ✦ 梦角正在输入指示器 ✦ -->
+        <div id="companion-typing-indicator" class="companion-typing-indicator">
+            <div class="companion-typing-avatar"><i class="fas fa-user"></i></div>
+            <div class="companion-typing-bubble">
+                <span class="companion-typing-name"></span>
+                <span class="companion-typing-dots">
+                    <span></span><span></span><span></span>
+                </span>
+            </div>
+        </div>
+
+        <div id="companion-exit-confirm" class="companion-exit-confirm">
+            <div class="companion-exit-box">
+                <p>现在就要走了吗？</p>
+                <div class="companion-exit-btns">
+                    <button id="exit-confirm-no" class="modal-btn modal-btn-secondary">再陪一会儿</button>
+                    <button id="exit-confirm-yes" class="modal-btn modal-btn-primary">下次见</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== / 陪伴功能弹窗 ========== -->
 
     <div class="modal" id="appearance-modal">
         <div class="modal-content">
@@ -675,10 +843,10 @@
         <i class="fas fa-paint-roller"></i><span>主题配色</span>
     </div>
     <div class="settings-card" onclick="showAppearancePanel('font-bg')" style="cursor:pointer;">
-        <i class="fas fa-font"></i><span>背景 & 字体</span>
+        <i class="fas fa-image"></i><span>背景 & 陪伴</span>
     </div>
     <div class="settings-card" onclick="showAppearancePanel('bubble-css')" style="cursor:pointer;">
-        <i class="fas fa-comment"></i><span>气泡 & CSS</span>
+        <i class="fas fa-font"></i><span>字体 & 气泡</span>
     </div>
     <div class="settings-card" onclick="showAppearancePanel('avatar')" style="cursor:pointer;">
         <i class="fas fa-user-circle"></i><span>聊天头像</span>
@@ -687,9 +855,6 @@
 
 <div id="appearance-panel-container" style="display:none;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-        <button onclick="hideAppearancePanel()" style="background:var(--primary-bg);border:1px solid var(--border-color);border-radius:10px;padding:6px 12px;font-size:12px;cursor:pointer;color:var(--text-secondary);">
-            <i class="fas fa-arrow-left"></i> 返回
-        </button>
         <span id="appearance-panel-title" style="font-size:14px;font-weight:600;color:var(--text-primary);"></span>
     </div>
 
@@ -733,9 +898,116 @@
                 </div>
             </div>
         </div>
+
+        <div class="settings-section">
+            <div class="settings-section-title"><i class="fas fa-paint-brush"></i>全局主题 CSS</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;line-height:1.5;">作用于整个页面的 CSS，可覆盖任意元素样式、CSS 变量、布局等。支持完整的 CSS 语法。</div>
+            <textarea id="custom-global-css" class="modal-textarea" style="font-family: monospace; font-size: 12px; height: 160px; white-space: pre;" placeholder=":root {
+  --accent-color: #ff6b9d;
+  --primary-bg: #0d0d14;
+  --border-color: rgba(255,255,255,0.08);
+}
+
+#partner-info {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+}
+
+#message-input {
+  border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border-radius: 4px;
+}"></textarea>
+            <div style="display: flex; justify-content: space-between; align-items:center; gap: 10px; margin-top:8px;">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer;">
+                    <input type="checkbox" id="global-css-live-toggle" style="width:14px;height:14px;accent-color:var(--accent-color);">
+                    实时应用
+                </label>
+                <div style="display:flex;gap:8px;">
+                    <button id="reset-global-css-btn" class="modal-btn modal-btn-secondary" style="padding: 6px 12px; font-size: 12px;">清空</button>
+                    <button id="apply-global-css-btn" class="modal-btn modal-btn-primary" style="padding: 6px 12px; font-size: 12px;">应用 CSS</button>
+                </div>
+            </div>
+            <div id="global-css-status" style="display:none;margin-top:8px;font-size:11px;color:var(--text-secondary);padding:6px 10px;background:rgba(var(--accent-color-rgb),0.06);border-radius:8px;"></div>
+        </div>
     </div>
 
-    <div id="appearance-panel-font" class="appearance-sub-panel" style="display:none;">
+    <div id="appearance-panel-font" class="appearance-sub-panel" style="display:none;"></div>
+
+    <div id="appearance-panel-background" class="appearance-sub-panel" style="display:none;">
+        <div class="settings-section">
+            <div class="settings-section-title">
+                <i class="fas fa-image"></i>聊天背景
+                <input type="file" id="bg-gallery-input" accept="image/*" style="display: none;">
+            </div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;opacity:0.75;line-height:1.5;">
+                支持图片及 GIF 动图。点击 <i class="fas fa-plus" style="font-size:10px;"></i> 添加，点击项目应用。
+            </div>
+            <div class="bg-gallery" id="background-gallery-list"></div>
+            <div style="text-align: center; margin-top: 10px;">
+                <button class="modal-btn modal-btn-secondary" id="reset-default-bg" style="font-size: 12px; padding: 6px 12px;">
+                    <i class="fas fa-undo"></i> 恢复默认背景
+                </button>
+            </div>
+        </div>
+
+        <!-- 陪伴背景管理 -->
+        <div class="settings-section" id="companion-bg-section">
+            <div class="settings-section-title">
+                <i class="fas fa-hand-holding-heart"></i>陪伴背景
+                <input type="file" id="companion-bg-upload-input" accept="image/*,video/*" style="display:none;">
+            </div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;opacity:0.75;line-height:1.5;">
+                每个场景独立设置背景，支持图片和视频。点击 <i class="fas fa-plus" style="font-size:10px;"></i> 添加。
+            </div>
+            <div class="companion-mgr-tabs" id="companion-bg-tabs" data-mgr="bg">
+                <button class="companion-mgr-tab active" data-mode="study"><i class="fas fa-book-open"></i><span>学习</span></button>
+                <button class="companion-mgr-tab" data-mode="work"><i class="fas fa-laptop-code"></i><span>工作</span></button>
+                <button class="companion-mgr-tab" data-mode="exercise"><i class="fas fa-person-running"></i><span>运动</span></button>
+                <button class="companion-mgr-tab" data-mode="sleep"><i class="fas fa-moon"></i><span>睡觉</span></button>
+            </div>
+            <div class="companion-mgr-list" id="companion-bg-list"></div>
+        </div>
+
+        <!-- 陪伴日记背景 -->
+        <div class="settings-section" id="diary-bg-section">
+            <div class="settings-section-title">
+                <i class="fas fa-book"></i>陪伴日记背景
+                <input type="file" id="diary-bg-input" accept="image/*" style="display:none;">
+            </div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;opacity:0.75;line-height:1.5;">
+                日记页面的纸张背景。点击 <i class="fas fa-plus" style="font-size:10px;"></i> 添加，点击项目应用。
+            </div>
+            <div class="bg-gallery" id="diary-bg-list"></div>
+            <div style="text-align: center; margin-top: 10px;">
+                <button class="modal-btn modal-btn-secondary" id="diary-bg-reset" style="font-size: 12px; padding: 6px 12px;">
+                    <i class="fas fa-undo"></i> 恢复默认背景
+                </button>
+            </div>
+        </div>
+
+        <!-- 陪伴音乐管理 -->
+        <div class="settings-section" id="companion-noise-section">
+            <div class="settings-section-title">
+                <i class="fas fa-music"></i>陪伴音乐
+                <input type="file" id="companion-noise-upload-input" accept="*/*" multiple style="display:none;">
+            </div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;opacity:0.75;line-height:1.5;">
+                每个场景独立设置音乐，陪伴中持续播放。点击 <i class="fas fa-plus" style="font-size:10px;"></i> 添加。
+            </div>
+            <div class="companion-mgr-tabs" id="companion-noise-tabs" data-mgr="noise">
+                <button class="companion-mgr-tab active" data-mode="study"><i class="fas fa-book-open"></i><span>学习</span></button>
+                <button class="companion-mgr-tab" data-mode="work"><i class="fas fa-laptop-code"></i><span>工作</span></button>
+                <button class="companion-mgr-tab" data-mode="exercise"><i class="fas fa-person-running"></i><span>运动</span></button>
+                <button class="companion-mgr-tab" data-mode="sleep"><i class="fas fa-moon"></i><span>睡觉</span></button>
+            </div>
+            <div class="companion-mgr-list" id="companion-noise-list"></div>
+        </div>
+    </div>
+
+    <div id="appearance-panel-bubble" class="appearance-sub-panel" style="display:none;">
         <div class="settings-section">
             <div class="settings-section-title"><i class="fas fa-font"></i>字体设置</div>
             <div class="font-size-control">
@@ -755,31 +1027,9 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <div id="appearance-panel-background" class="appearance-sub-panel" style="display:none;">
         <div class="settings-section">
             <div class="settings-section-title">
-                <i class="fas fa-image"></i>聊天背景
-                <input type="file" id="bg-gallery-input" accept="image/*" style="display: none;">
-            </div>
-            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;opacity:0.75;line-height:1.5;">
-                支持图片及 GIF 动图。点击 <i class="fas fa-plus" style="font-size:10px;"></i> 添加，点击项目应用。
-            </div>
-            <div class="bg-gallery" id="background-gallery-list"></div>
-            <div style="text-align: center; margin-top: 10px;">
-                <button class="modal-btn modal-btn-secondary" id="reset-default-bg" style="font-size: 12px; padding: 6px 12px;">
-                    <i class="fas fa-undo"></i> 恢复默认背景
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="appearance-panel-bubble" class="appearance-sub-panel" style="display:none;">
-        <div class="settings-section">
-            <div class="settings-section-title">
-                <i class="fas fa-comment"></i>气泡样式
-            </div>
+                <i class="fas fa-comment"></i>气泡样式</div>
             <div class="settings-item-list" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                 <div class="settings-item" data-bubble-style="standard" style="justify-content:center;">
                     <i class="fas fa-comment"></i><span>标准尖角</span>
@@ -827,18 +1077,6 @@
                 </div>
             </div>
 
-            <div id="partner-name-chat-toggle" style="display:flex;align-items:center;gap:12px;background:var(--primary-bg);border:1px solid var(--border-color);border-radius:12px;padding:12px 14px;cursor:pointer;transition:all 0.2s;margin-bottom:10px;">
-                <div style="width:36px;height:36px;border-radius:50%;background:rgba(var(--accent-color-rgb),0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fas fa-tag" style="font-size:16px;color:var(--accent-color);"></i>
-                </div>
-                <div style="flex:1;">
-                    <div style="font-size:13px;font-weight:600;color:var(--text-primary);">单人模式显示对方名字</div>
-                    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;" id="partner-name-chat-status">已关闭</div>
-                </div>
-                <div id="partner-name-chat-pill" style="width:44px;height:24px;border-radius:24px;background:var(--border-color);position:relative;transition:background 0.3s;flex-shrink:0;">
-                    <div id="partner-name-chat-knob" style="position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;right:23px;transition:right 0.25s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
-                </div>
-            </div>
             <div class="font-size-control" id="in-chat-avatar-size-control-2">
                 <span class="font-size-label">头像尺寸:</span>
                 <input type="range" min="24" max="48" value="36" class="font-size-slider" id="in-chat-avatar-size-slider-2">
@@ -999,47 +1237,14 @@
             </div>
         </div>
 
-        <div class="settings-section" style="margin-top:18px;">
-            <div class="settings-section-title"><i class="fas fa-paint-brush"></i>全局主题 CSS</div>
-            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;line-height:1.5;">作用于整个页面的 CSS，可覆盖任意元素样式、CSS 变量、布局等。支持完整的 CSS 语法。</div>
-            <textarea id="custom-global-css" class="modal-textarea" style="font-family: monospace; font-size: 12px; height: 160px; white-space: pre;" placeholder=":root {
-  --accent-color: #ff6b9d;
-  --primary-bg: #0d0d14;
-  --border-color: rgba(255,255,255,0.08);
-}
-
-#partner-info {
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
-}
-
-#message-input {
-  border-radius: 20px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--accent-color);
-  border-radius: 4px;
-}"></textarea>
-            <div style="display: flex; justify-content: space-between; align-items:center; gap: 10px; margin-top:8px;">
-                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer;">
-                    <input type="checkbox" id="global-css-live-toggle" style="width:14px;height:14px;accent-color:var(--accent-color);">
-                    实时应用
-                </label>
-                <div style="display:flex;gap:8px;">
-                    <button id="reset-global-css-btn" class="modal-btn modal-btn-secondary" style="padding: 6px 12px; font-size: 12px;">清空</button>
-                    <button id="apply-global-css-btn" class="modal-btn modal-btn-primary" style="padding: 6px 12px; font-size: 12px;">应用 CSS</button>
-                </div>
-            </div>
-            <div id="global-css-status" style="display:none;margin-top:8px;font-size:11px;color:var(--text-secondary);padding:6px 10px;background:rgba(var(--accent-color-rgb),0.06);border-radius:8px;"></div>
-        </div>
     </div>
 </div>
 
             <div class="modal-buttons" style="position:sticky;bottom:0;background:var(--secondary-bg);border-top:1px solid var(--border-color);padding:12px 0 0;z-index:10;margin-top:8px;margin-left:-24px;margin-right:-24px;padding-left:24px;padding-right:24px;padding-bottom:max(12px, env(safe-area-inset-bottom, 0px));">
-                <button class="modal-btn modal-btn-secondary" id="back-appearance" onclick="(function(){hideModal(document.getElementById('appearance-modal'));showModal(document.getElementById('settings-modal'))})()">
+                <button class="modal-btn modal-btn-secondary" id="back-appearance" onclick="(function(){ const panelContainer = document.getElementById('appearance-panel-container'); if(panelContainer && panelContainer.style.display !== 'none'){ hideAppearancePanel(); } else { hideModal(document.getElementById('appearance-modal')); showModal(document.getElementById('settings-modal')); } })()">
                     <i class="fas fa-arrow-left"></i> 返回
                 </button>
-                <button class="modal-btn modal-btn-secondary" id="close-appearance">关闭</button>
+                <button class="modal-btn modal-btn-secondary" id="close-appearance" onclick="hideModal(document.getElementById('appearance-modal'))">关闭</button>
             </div>
         </div>
     </div>
@@ -1105,6 +1310,25 @@
                             <span class="setting-pill-label">正在输入</span>
                             <div class="setting-pill-switch"><div class="setting-pill-knob"></div></div>
                         </div>
+                        <div class="setting-pill-row" id="fake-voice-toggle" onclick="window._toggleFakeVoice && window._toggleFakeVoice()" style="border-top:1px solid var(--border-color);">
+                            <span class="setting-pill-icon"><i class="fas fa-microphone"></i></span>
+                            <span class="setting-pill-label">语音消息 <span style="font-size:11px;color:var(--text-secondary);font-weight:400;">开启后梦角有概率发送语音</span></span>
+                            <div class="setting-pill-switch" id="fake-voice-switch"><div class="setting-pill-knob"></div></div>
+                        </div>
+                    </div>
+
+                    <p class="cs-group-label" style="margin-top:4px;">拍一拍</p>
+                    <div class="cs-card">
+                        <div style="padding:10px 14px;">
+                            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">我拍一拍的默认动作</div>
+                            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                                <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap;" id="poke-preview-myname"></span>
+                                <input type="text" id="my-poke-text-input" placeholder="拍了拍" style="flex:1;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--primary-bg);color:var(--text-primary);outline:none;font-family:var(--font-family);">
+                                <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap;" id="poke-preview-partnername"></span>
+                            </div>
+                            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;">预览：<span id="poke-action-preview" style="color:var(--text-primary);"></span></div>
+                            <button id="my-poke-text-save" class="modal-btn modal-btn-primary" style="width:100%;padding:7px;font-size:12px;">保存</button>
+                        </div>
                     </div>
 
                     <p class="cs-group-label" style="margin-top:4px;">时间戳</p>
@@ -1169,15 +1393,41 @@
                         </div>
                     </div>
 
-                    <p class="cs-group-label" style="margin-top:4px;">通话功能</p>
-                    <div class="cs-card">
+                    <div style="display:none;">
                         <div class="setting-pill-row" id="call-feature-toggle-row">
-                            <span class="setting-pill-icon"><i class="fas fa-video"></i></span>
-                            <span class="setting-pill-label">模拟视频通话 <span style="font-size:11px;color:var(--text-secondary);font-weight:400;">关闭后隐藏主界面通话按键</span></span>
                             <label class="notif-toggle-switch" style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
                                 <input type="checkbox" id="call-enabled-toggle" style="opacity:0;width:0;height:0;">
                                 <span class="notif-toggle-slider"></span>
                             </label>
+                        </div>
+                    </div>
+
+                    <p class="cs-group-label" style="margin-top:4px;">后台运行</p>
+                    <div class="cs-card">
+                        <div class="setting-pill-row" id="notif-toggle-row">
+                            <span class="setting-pill-icon"><i class="fas fa-bell"></i></span>
+                            <span class="setting-pill-label">后台消息推送 <span style="font-size:11px;color:var(--text-secondary);font-weight:400;" id="notif-status-text">收到新消息时弹出提醒</span></span>
+                            <label class="notif-toggle-switch" style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
+                                <input type="checkbox" id="notif-permission-toggle" onchange="handleNotifToggle(this)" style="opacity:0;width:0;height:0;">
+                                <span class="notif-toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-pill-row" id="keepalive-audio-toggle" onclick="window._toggleKeepaliveAudio && window._toggleKeepaliveAudio()" style="border-top:1px solid var(--border-color);">
+                            <span class="setting-pill-icon" style="position:relative;">
+                                <i class="fas fa-broadcast-tower"></i>
+                                <span id="keepalive-dot" class="keepalive-dot"></span>
+                            </span>
+                            <span class="setting-pill-label">后台保活 <span style="font-size:11px;color:var(--text-secondary);font-weight:400;" id="keepalive-audio-desc">保持后台运行，不错过ta的消息</span></span>
+                            <div class="setting-pill-switch" id="keepalive-audio-switch"><div class="setting-pill-knob"></div></div>
+                        </div>
+                        <div id="keepalive-bar-row" style="display:none;align-items:center;gap:3px;padding:8px 14px 10px;border-top:1px solid var(--border-color);">
+                            <span style="font-size:11px;color:var(--text-secondary);margin-right:4px;">音频状态</span>
+                            <div class="keepalive-wave-bar" style="animation-delay:0s;"></div>
+                            <div class="keepalive-wave-bar" style="animation-delay:0.1s;"></div>
+                            <div class="keepalive-wave-bar" style="animation-delay:0.2s;"></div>
+                            <div class="keepalive-wave-bar" style="animation-delay:0.15s;"></div>
+                            <div class="keepalive-wave-bar" style="animation-delay:0.05s;"></div>
+                            <span style="font-size:11px;color:var(--accent-color);margin-left:6px;font-weight:600;">LIVE</span>
                         </div>
                     </div>
                 </div>
@@ -1287,24 +1537,87 @@
                             </div>
                         </div>
                     </div>
-                    <p class="cs-group-label" style="margin-top:16px;">挂机保活音频</p>
+
+                    <p class="cs-group-label" style="margin-top:4px;">邀请音效</p>
                     <div class="cs-card">
-                        <div class="setting-pill-row" id="keepalive-audio-toggle" onclick="window._toggleKeepaliveAudio && window._toggleKeepaliveAudio()">
-                            <span class="setting-pill-icon" style="position:relative;">
-                                <i class="fas fa-broadcast-tower"></i>
-                                <span id="keepalive-dot" class="keepalive-dot"></span>
-                            </span>
-                            <span class="setting-pill-label">后台保活 <span style="font-size:11px;color:var(--text-secondary);font-weight:400;" id="keepalive-audio-desc">静音循环音频，防止页面被系统挂起</span></span>
-                            <div class="setting-pill-switch" id="keepalive-audio-switch"><div class="setting-pill-knob"></div></div>
-                        </div>
-                        <div id="keepalive-bar-row" style="display:none;align-items:center;gap:3px;padding:8px 14px 10px;border-top:1px solid var(--border-color);">
-                            <span style="font-size:11px;color:var(--text-secondary);margin-right:4px;">音频状态</span>
-                            <div class="keepalive-wave-bar" style="animation-delay:0s;"></div>
-                            <div class="keepalive-wave-bar" style="animation-delay:0.1s;"></div>
-                            <div class="keepalive-wave-bar" style="animation-delay:0.2s;"></div>
-                            <div class="keepalive-wave-bar" style="animation-delay:0.15s;"></div>
-                            <div class="keepalive-wave-bar" style="animation-delay:0.05s;"></div>
-                            <span style="font-size:11px;color:var(--accent-color);margin-left:6px;font-weight:600;">LIVE</span>
+                        <div class="cs-sound-inner" style="padding-top:10px;">
+                            <div style="padding-top:0;display:flex;flex-direction:column;gap:12px;">
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">陪我学习邀请音效</div>
+                                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+                                        <select id="sound-invite-study-preset" style="flex:1;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--primary-bg);color:var(--text-primary);outline:none;font-family:var(--font-family);">
+                                            <option value="mute">无音效</option>
+                                            <option value="default">内置音效</option>
+                                        </select>
+                                        <button id="test-sound-invite-study-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;"><i class="fas fa-play"></i> 试听</button>
+                                    </div>
+                                    <div style="display:flex;gap:6px;align-items:center;">
+                                        <input type="text" id="sound-invite-study-custom-url" placeholder="可填自定义URL（留空用内置）" style="flex:1;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--primary-bg);color:var(--text-primary);outline:none;">
+                                        <button id="upload-sound-invite-study-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;" title="上传本地音频文件"><i class="fas fa-upload"></i></button>
+                                        <input type="file" id="upload-sound-invite-study-file" accept="audio/mp3,audio/mpeg,audio/wav,audio/ogg,audio/*" style="display:none;">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">陪我工作邀请音效</div>
+                                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+                                        <select id="sound-invite-work-preset" style="flex:1;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--primary-bg);color:var(--text-primary);outline:none;font-family:var(--font-family);">
+                                            <option value="mute">无音效</option>
+                                            <option value="default">内置音效</option>
+                                        </select>
+                                        <button id="test-sound-invite-work-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;"><i class="fas fa-play"></i> 试听</button>
+                                    </div>
+                                    <div style="display:flex;gap:6px;align-items:center;">
+                                        <input type="text" id="sound-invite-work-custom-url" placeholder="可填自定义URL（留空用内置）" style="flex:1;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--primary-bg);color:var(--text-primary);outline:none;">
+                                        <button id="upload-sound-invite-work-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;" title="上传本地音频文件"><i class="fas fa-upload"></i></button>
+                                        <input type="file" id="upload-sound-invite-work-file" accept="audio/mp3,audio/mpeg,audio/wav,audio/ogg,audio/*" style="display:none;">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">陪我运动邀请音效</div>
+                                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+                                        <select id="sound-invite-exercise-preset" style="flex:1;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--primary-bg);color:var(--text-primary);outline:none;font-family:var(--font-family);">
+                                            <option value="mute">无音效</option>
+                                            <option value="default">内置音效</option>
+                                        </select>
+                                        <button id="test-sound-invite-exercise-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;"><i class="fas fa-play"></i> 试听</button>
+                                    </div>
+                                    <div style="display:flex;gap:6px;align-items:center;">
+                                        <input type="text" id="sound-invite-exercise-custom-url" placeholder="可填自定义URL（留空用内置）" style="flex:1;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--primary-bg);color:var(--text-primary);outline:none;">
+                                        <button id="upload-sound-invite-exercise-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;" title="上传本地音频文件"><i class="fas fa-upload"></i></button>
+                                        <input type="file" id="upload-sound-invite-exercise-file" accept="audio/mp3,audio/mpeg,audio/wav,audio/ogg,audio/*" style="display:none;">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">陪我睡觉邀请音效</div>
+                                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+                                        <select id="sound-invite-sleep-preset" style="flex:1;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--primary-bg);color:var(--text-primary);outline:none;font-family:var(--font-family);">
+                                            <option value="mute">无音效</option>
+                                            <option value="default">内置音效</option>
+                                        </select>
+                                        <button id="test-sound-invite-sleep-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;"><i class="fas fa-play"></i> 试听</button>
+                                    </div>
+                                    <div style="display:flex;gap:6px;align-items:center;">
+                                        <input type="text" id="sound-invite-sleep-custom-url" placeholder="可填自定义URL（留空用内置）" style="flex:1;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--primary-bg);color:var(--text-primary);outline:none;">
+                                        <button id="upload-sound-invite-sleep-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;" title="上传本地音频文件"><i class="fas fa-upload"></i></button>
+                                        <input type="file" id="upload-sound-invite-sleep-file" accept="audio/mp3,audio/mpeg,audio/wav,audio/ogg,audio/*" style="display:none;">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">视频通话邀请音效</div>
+                                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+                                        <select id="sound-invite-videocall-preset" style="flex:1;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--primary-bg);color:var(--text-primary);outline:none;font-family:var(--font-family);">
+                                            <option value="mute">无音效</option>
+                                            <option value="default">内置音效</option>
+                                        </select>
+                                        <button id="test-sound-invite-videocall-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;"><i class="fas fa-play"></i> 试听</button>
+                                    </div>
+                                    <div style="display:flex;gap:6px;align-items:center;">
+                                        <input type="text" id="sound-invite-videocall-custom-url" placeholder="可填自定义URL（留空用内置）" style="flex:1;padding:7px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--primary-bg);color:var(--text-primary);outline:none;">
+                                        <button id="upload-sound-invite-videocall-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;" title="上传本地音频文件"><i class="fas fa-upload"></i></button>
+                                        <input type="file" id="upload-sound-invite-videocall-file" accept="audio/mp3,audio/mpeg,audio/wav,audio/ogg,audio/*" style="display:none;">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1354,7 +1667,7 @@
                 <button class="modal-btn modal-btn-secondary" id="back-chat" onclick="(function(){hideModal(document.getElementById('chat-modal'));showModal(document.getElementById('settings-modal'))})()">
                     <i class="fas fa-arrow-left"></i> 返回
                 </button>
-                <button class="modal-btn modal-btn-secondary" id="close-chat" style="margin-left:auto;">关闭</button>
+                <button class="modal-btn modal-btn-secondary" id="close-chat" onclick="hideModal(document.getElementById('chat-modal'))">关闭</button>
             </div>
         </div>
     </div>
@@ -1373,27 +1686,33 @@
                     <div class="settings-item" id="custom-replies-function">
                         <i class="fas fa-comment-dots"></i><span>自定义回复</span>
                     </div>
-                    <div class="settings-item" id="music-player-toggle">
-                        <i class="fas fa-music"></i><span>悬浮音乐播放器</span>
-                    </div>
                     <div class="settings-item" id="stats-function">
                         <i class="fas fa-chart-bar"></i><span>消息统计</span>
                     </div>
-                    <div class="settings-item" id="decision-function">
-                        <i class="fas fa-balance-scale"></i> 
-                        <span>抉择</span> 
-                    </div>
-                    <div class="settings-item" id="fortune-lenormand-function" style="position:relative;">
-                        <i class="fas fa-star-and-crescent"></i><span>运势 · 占卜</span>
+                    <div class="settings-item" id="mood-function">
+                        <i class="fas fa-calendar-day"></i><span>心情手账</span>
                     </div>
                     <div class="settings-item" id="anniversary-function">
                         <i class="fas fa-heart"></i><span>重要日</span>
                     </div>
-                    <div class="settings-item" id="mood-function">
-                        <i class="fas fa-calendar-day"></i><span>心晴手账</span>
+                    <div class="settings-item" id="fortune-lenormand-function" style="position:relative;">
+                        <i class="fas fa-star-and-crescent"></i><span>运势 · 占卜</span>
                     </div>
-                    <div class="settings-item" id="envelope-function">
-                        <i class="fas fa-envelope"></i><span>信封投递</span>
+                    <div class="settings-item" id="decision-function">
+                        <i class="fas fa-balance-scale"></i>
+                        <span>抉择</span>
+                    </div>
+                    <div class="settings-item" id="companion-diary-function">
+                        <i class="fas fa-book"></i><span>陪伴日记</span>
+                    </div>
+                    <div class="settings-item settings-item-disabled" id="coming-soon-placeholder">
+                        <i class="fas fa-hourglass-half"></i><span>敬请期待</span>
+                    </div>
+                    <div class="settings-item" id="music-player-toggle" style="display:none;">
+                        <i class="fas fa-music"></i><span>悬浮音乐播放器</span>
+                    </div>
+                    <div class="settings-item" id="envelope-function" style="display:none;">
+                        <i class="fas fa-envelope-open-text"></i><span>信箱</span>
                     </div>
                 </div>
             </div>
@@ -1402,7 +1721,7 @@
                 <button class="modal-btn modal-btn-secondary" id="back-advanced" onclick="(function(){hideModal(document.getElementById('advanced-modal'));showModal(document.getElementById('settings-modal'))})()">
                     <i class="fas fa-arrow-left"></i> 返回
                 </button>
-                <button class="modal-btn modal-btn-secondary" id="close-advanced">关闭</button>
+                <button class="modal-btn modal-btn-secondary" id="close-advanced" onclick="hideModal(document.getElementById('advanced-modal'))">关闭</button>
             </div>
         </div>
     </div>
@@ -2213,6 +2532,136 @@
 </div>
 
 <div id="dg-editor-modal" style="display:none;"></div>
+
+<!-- 陪伴日记 modal -->
+<div class="modal" id="companion-diary-modal">
+    <div class="modal-content cd-modal-content">
+        <!-- 头部 -->
+        <div class="cd-header">
+            <div class="cd-title">
+                <i class="fas fa-book"></i>
+                <span>陪伴日记</span>
+            </div>
+            <div class="cd-header-actions">
+                <button class="cd-stats-btn" id="cd-stats-btn">
+                    <i class="fas fa-chart-pie"></i><span>统计</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 工具栏：月份选择 + 筛选 -->
+        <div class="cd-toolbar">
+            <div class="cd-month-display" id="cd-month-display">
+                <span id="cd-month-text">2025年6月</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="cd-filters">
+                <div class="cd-chip" id="cd-chip-mode">
+                    <span id="cd-chip-mode-label">种类</span>
+                    <i class="fas fa-chevron-down"></i>
+                    <div class="cd-dropdown" id="cd-dropdown-mode">
+                        <div class="cd-dropdown-item" data-val="all">全部</div>
+                        <div class="cd-dropdown-item" data-val="study">学习</div>
+                        <div class="cd-dropdown-item" data-val="work">工作</div>
+                        <div class="cd-dropdown-item" data-val="exercise">运动</div>
+                        <div class="cd-dropdown-item" data-val="sleep">睡觉</div>
+                    </div>
+                </div>
+                <div class="cd-chip" id="cd-chip-init">
+                    <span id="cd-chip-init-label">邀请</span>
+                    <i class="fas fa-chevron-down"></i>
+                    <div class="cd-dropdown" id="cd-dropdown-init">
+                        <div class="cd-dropdown-item" data-val="all">全部</div>
+                        <div class="cd-dropdown-item" data-val="partner" data-name-partner>梦角邀请</div>
+                        <div class="cd-dropdown-item" data-val="user" data-name-me>我邀请</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 月历弹出层 -->
+        <div class="cd-cal-popup" id="cd-cal-popup">
+            <div class="cd-cal-year">
+                <button class="cd-cal-year-btn" id="cd-cal-prev-year"><i class="fas fa-chevron-left"></i></button>
+                <span class="cd-cal-year-label" id="cd-cal-year-label">2025</span>
+                <button class="cd-cal-year-btn" id="cd-cal-next-year"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="cd-cal-months" id="cd-cal-months"></div>
+        </div>
+
+        <!-- 日记本主体 -->
+        <div class="cd-body">
+            <div class="cd-spine">
+                <div class="cd-ring-wrap"><div class="cd-ring-back"></div><div class="cd-ring-front"></div></div>
+                <div class="cd-ring-wrap"><div class="cd-ring-back"></div><div class="cd-ring-front"></div></div>
+                <div class="cd-ring-wrap"><div class="cd-ring-back"></div><div class="cd-ring-front"></div></div>
+                <div class="cd-ring-wrap"><div class="cd-ring-back"></div><div class="cd-ring-front"></div></div>
+                <div class="cd-ring-wrap"><div class="cd-ring-back"></div><div class="cd-ring-front"></div></div>
+                <div class="cd-ring-wrap"><div class="cd-ring-back"></div><div class="cd-ring-front"></div></div>
+            </div>
+            <div class="cd-pages" id="cd-pages">
+                <!-- JS 渲染日记条目 -->
+            </div>
+        </div>
+
+        <!-- 统计视图（默认隐藏） -->
+        <div class="cd-stats-view" id="cd-stats-view">
+            <div class="cd-stats-back" id="cd-stats-back">
+                <i class="fas fa-arrow-left"></i><span>返回日记</span>
+            </div>
+            <div class="cd-stats-body">
+                <div class="cd-totals">
+                    <div class="cd-total-card">
+                        <div class="cd-total-num" id="cd-total-count">0</div>
+                        <div class="cd-total-label">累计陪伴次数</div>
+                    </div>
+                    <div class="cd-total-card">
+                        <div class="cd-total-num" id="cd-total-duration">0min</div>
+                        <div class="cd-total-label">累计陪伴时长</div>
+                    </div>
+                </div>
+                <div class="cd-chart-section">
+                    <div class="cd-chart-title">邀请来源</div>
+                    <div class="cd-pie-wrap">
+                        <canvas id="cd-pie-init" width="120" height="120"></canvas>
+                        <div class="cd-legend" id="cd-legend-init"></div>
+                    </div>
+                </div>
+                <div class="cd-chart-section">
+                    <div class="cd-chart-title">种类分布</div>
+                    <div class="cd-pie-wrap">
+                        <canvas id="cd-pie-mode" width="120" height="120"></canvas>
+                        <div class="cd-legend" id="cd-legend-mode"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 关闭按钮 -->
+        <div class="modal-buttons" style="position:sticky;bottom:0;background:var(--secondary-bg);border-top:1px solid var(--border-color);padding:12px 0 0;z-index:10;margin-top:8px;margin-left:-24px;margin-right:-24px;padding-left:24px;padding-right:24px;padding-bottom:max(14px, env(safe-area-inset-bottom, 0px));">
+            <button class="modal-btn modal-btn-secondary" id="cd-back-btn" onclick="(function(){hideModal(document.getElementById('companion-diary-modal'));showModal(document.getElementById('advanced-modal'))})()">
+                <i class="fas fa-arrow-left"></i> 返回
+            </button>
+            <button class="modal-btn modal-btn-secondary" id="close-companion-diary">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 备注编辑弹层 -->
+<div class="modal" id="cd-note-edit-modal">
+    <div class="modal-content" style="max-width:340px;">
+        <div class="modal-title">
+            <i class="fas fa-pen"></i><span>编辑备注</span>
+        </div>
+        <div id="cd-note-edit-info" style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;"></div>
+        <textarea class="modal-textarea" id="cd-note-edit-textarea" rows="4" placeholder="今天和梦角的陪伴时光，想记下点什么…" style="margin-bottom:8px;"></textarea>
+        <div class="modal-buttons" style="padding-top:8px;">
+            <button class="modal-btn modal-btn-secondary" id="cd-note-edit-cancel">取消</button>
+            <button class="modal-btn modal-btn-primary" id="cd-note-edit-save">保存</button>
+        </div>
+    </div>
+</div>
+
     <!-- == 核心层 == -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
@@ -2225,6 +2674,7 @@
     <script src="js/features/envelope.js"></script>
     <script src="js/features/reply-library.js"></script>
     <script src="js/features/theme-editor.js"></script>
+    <script src="js/features/topbar.js"></script>
     <script src="js/features/group-chat.js"></script>
     <script src="js/features/call.js"></script>
 
@@ -2234,6 +2684,18 @@
     <script src="js/data.js"></script>
     <script src="js/onboarding.js"></script> 
     <script src="js/listeners.js"></script>
+    <script src="js/listeners-step2.js"></script>
+    <script src="js/listeners-voice.js"></script>
+    <script src="js/listeners-sticker.js"></script>
+    <script src="js/features/companion.js"></script>
+    <script src="js/features/companion-diary.js"></script>
     <script src="js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('./sw.js').catch(function () {});
+            });
+        }
+    </script>
 </body>
 </html>
