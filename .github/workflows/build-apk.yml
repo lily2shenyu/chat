@@ -29,6 +29,7 @@ jobs:
 
       - name: Ensure signing keystore
         run: |
+          mkdir -p android/keystore
           if [ ! -f android/keystore/love.keystore ]; then
             keytool -genkeypair -v -keystore android/keystore/love.keystore -alias lilidreamlove -keyalg RSA -keysize 2048 -validity 10000 -storepass lilidreamlove -keypass lilidreamlove -dname "CN=LOVE, OU=lili, O=shenyu, L=city, S=state, C=CN"
           fi
