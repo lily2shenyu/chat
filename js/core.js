@@ -141,7 +141,7 @@ function loadMoreHistory() {
                 myName: "我",
                 myStatus: "在线",
                 partnerStatus: "在线",
-                isDarkMode: false,
+                isDarkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
                 colorTheme: "gold",
                 soundEnabled: true,
                 typingIndicatorEnabled: true,
@@ -634,7 +634,8 @@ const saveData = async () => {
 if (customMottos && customMottos.length > 0) {
     document.querySelector('.header-motto').textContent = getRandomItem(customMottos);
 } else {
-    document.querySelector('.header-motto').textContent = '';
+    const fallbackMottos = ["16:21，我在想你", "蓝门前的那个黄昏", "栗屿海的风很轻", "窗外那棵玉兰又开了一朵", "港口今天落日很好看", "潮起潮落，我都在"];
+    document.querySelector('.header-motto').textContent = getRandomItem(fallbackMottos);
 }
             const placeholder = "";
             DOMElements.messageInput.placeholder = placeholder.length > 20 ? placeholder.substring(0, 20) + "...": placeholder;
@@ -824,8 +825,7 @@ function manageAutoSendTimer() {
                 }
             }
 
-            DOMElements.html.setAttribute('data-theme', settings.isDarkMode ? 'dark': 'light');
-            DOMElements.themeToggle.innerHTML = settings.isDarkMode ? '<i class="fas fa-sun"></i>': '<i class="fas fa-moon"></i>';
+            DOMElements.html.setAttribute('data-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
             DOMElements.partner.name.textContent = settings.partnerName;
             DOMElements.me.name.textContent = settings.myName;
             DOMElements.partner.status.textContent = settings.partnerStatus || '在线';
@@ -957,7 +957,10 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
         callEvDiv.className = 'call-event-message';
         callEvDiv.dataset.id = msg.id;
         const icon = msg.callIcon || 'fa-video';
-        const isRejected = icon === 'fa-phone-slash';
+        // 红色样式：通话拒绝/未接 + 陪伴拒绝/错过/取消
+        const isRejected = icon === 'fa-phone-slash' ||
+                           icon === 'fa-heart-crack' ||
+                           icon === 'fa-circle-xmark';
         const colorClass = isRejected ? 'call-event-pill--rejected' : 'call-event-pill--ended';
         const detail = msg.callDetail ? `<span class="call-event-detail">${msg.callDetail}</span>` : '';
         callEvDiv.innerHTML = `<div class="call-event-pill ${colorClass}"><i class="fas ${icon} call-event-icon"></i><span class="call-event-label">${msg.text.replace(/ · .*/, '')}</span>${detail}<button class="call-event-delete" title="删除" onclick="(function(btn){const id=btn.closest('[data-id]').dataset.id;const idx=messages.findIndex(m=>String(m.id)===String(id));if(idx>-1){messages.splice(idx,1);renderMessages();throttledSaveData();}})(this)"><i class="fas fa-times"></i></button></div>`;
@@ -1051,7 +1054,7 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
 
     let messageHTML = '';
     if (msg.replyTo) {
-        const repliedText = msg.replyTo.text || (msg.replyTo.image ? '🖼 图片' : '[消息]');
+        const repliedText = msg.replyTo.text || (msg.replyTo.voice ? `语音 ${msg.replyTo.voice.duration || 0}"` : (msg.replyTo.image ? '🖼 图片' : '[消息]'));
         const repliedSender = msg.replyTo.sender === 'user' ? (settings.myName || '我') : (settings.partnerName || '对方');
         messageHTML += `<div class="reply-indicator" data-reply-id="${msg.replyTo.id || ''}" style="cursor:pointer;" onclick="scrollToQuotedMessage(this)"><span class="reply-indicator-sender">${repliedSender}</span><span class="reply-indicator-text">${repliedText}</span></div>`;
     }
@@ -1249,6 +1252,16 @@ const addMessage = (message) => {
     });
 
     throttledSaveData();
+
+    // 钩子：通知陪伴模块"梦角刚说了一句话"，让陪伴页可以同步显示气泡
+    // 只对梦角的普通消息触发（不是用户消息、不是 system call-event 等）
+    if (message.sender !== 'user' && message.type === 'normal' && typeof window._onPartnerMessage === 'function') {
+        try { window._onPartnerMessage(message); } catch (e) { console.warn('[onPartnerMessage]', e); }
+    }
+    // 钩子：通知陪伴模块"用户刚发了一条消息"，让陪伴页气泡同步显示
+    if (message.sender === 'user' && message.type === 'normal' && typeof window._onUserMessage === 'function') {
+        try { window._onUserMessage(message); } catch (e) { console.warn('[onUserMessage]', e); }
+    }
 };
 
         window._addCallEvent = (icon, label, detail) => {
@@ -1313,7 +1326,7 @@ const addMessage = (message) => {
                 return;
             }
             const senderName = currentReplyTo.sender === 'user' ? (settings.myName || '我') : (settings.partnerName || '对方');
-            const previewText = currentReplyTo.text ? currentReplyTo.text.slice(0, 40) : '🖼 图片';
+            const previewText = currentReplyTo.text ? currentReplyTo.text.slice(0, 40) : (currentReplyTo.voice ? `语音 ${currentReplyTo.voice.duration || 0}"` : '🖼 图片');
             container.style.display = 'flex';
             container.innerHTML = `
                 <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(var(--accent-color-rgb),0.07);border-left:3px solid var(--accent-color);border-radius:0 8px 8px 0;width:100%;">
@@ -1427,48 +1440,8 @@ const addMessage = (message) => {
                 updateReplyPreview();
 
 if (!isBatchMode && type === 'normal') {
-    const delayRange = settings.replyDelayMax - settings.replyDelayMin;
-    const randomDelay = settings.replyDelayMin + Math.random() * delayRange;
-
-    const chance = Math.max(0, Math.min(1, Number(settings.readNoReplyChance) || 0));
-    const shouldIgnore = settings.allowReadNoReply && (Math.random() < chance);
-
-    const readDelay = 1500 + Math.random() * 2500;
-                setTimeout(() => {
-        let changed = false;
-        messages.forEach(msg => {
-            if (msg.sender === 'user' && msg.status !== 'read') {
-                msg.status = 'read';
-                changed = true;
-            }
-        });
-        if (changed) { _updateReadReceiptsDOM(); throttledSaveData(); }
-    }, readDelay);
-
-    if (window._pendingReplyTimer) clearTimeout(window._pendingReplyTimer);
-    window._pendingReplyTimer = null;
-
-            if (!shouldIgnore) {
-        if (settings.typingIndicatorEnabled) {
-            const tiWrapper = document.getElementById('typing-indicator-wrapper');
-            const tiLabel = document.getElementById('typing-indicator-label');
-            const tiAvatar = document.getElementById('typing-indicator-avatar');
-            if (tiLabel) tiLabel.textContent = (settings.partnerName || '对方') + ' 正在输入';
-            if (tiWrapper) { 
-                positionTypingIndicator(); 
-                tiWrapper.style.display = 'block'; 
-            }
-            if (tiAvatar) {
-                const partnerImg = DOMElements.partner.avatar.querySelector('img');
-                tiAvatar.innerHTML = partnerImg ? `<img src="${partnerImg.src}">` : '<i class="fas fa-user"></i>';
-            }
-            if (DOMElements.chatContainer) DOMElements.chatContainer.scrollTop = DOMElements.chatContainer.scrollHeight;
-        }
-        window._pendingReplyTimer = setTimeout(() => {
-            window._pendingReplyTimer = null;
-            simulateReply();
-        }, randomDelay);
-    }
+    // 触发延迟回复（真实用户消息 → isUserMessage = true）
+    window._triggerDelayedReply(true);
 }
 };
 
@@ -1588,6 +1561,69 @@ if (!isBatchMode && type === 'normal') {
             ro.observe(inputArea);
         })();
 
+        // 通用：触发"模拟用户发了消息后的延迟回复"机制
+        //   isUserMessage: true 表示真实有用户消息（默认），false 表示陪伴页点击触发（不存在的虚拟消息）
+        //   返回 true 表示已排队等待回复，false 表示被"已读不回"概率拦截
+        window._triggerDelayedReply = function(isUserMessage) {
+            if (isBatchMode) return false;
+            // 真实用户消息一定要清除陪伴静默标志（避免陪伴中点了一下，回首页发消息时还跳过引用）
+            if (isUserMessage) {
+                window._companionSilentTrigger = false;
+            }
+            const delayRange = settings.replyDelayMax - settings.replyDelayMin;
+            const randomDelay = settings.replyDelayMin + Math.random() * delayRange;
+
+            const chance = Math.max(0, Math.min(1, Number(settings.readNoReplyChance) || 0));
+            const shouldIgnore = settings.allowReadNoReply && (Math.random() < chance);
+
+            // 只在有真实用户消息时才更新已读状态
+            if (isUserMessage) {
+                const readDelay = 1500 + Math.random() * 2500;
+                setTimeout(() => {
+                    let changed = false;
+                    messages.forEach(msg => {
+                        if (msg.sender === 'user' && msg.status !== 'read') {
+                            msg.status = 'read';
+                            changed = true;
+                        }
+                    });
+                    if (changed) { _updateReadReceiptsDOM(); throttledSaveData(); }
+                }, readDelay);
+            }
+
+            // 取消之前排队的回复（连续触发时只保留最后一次）
+            if (window._pendingReplyTimer) clearTimeout(window._pendingReplyTimer);
+            window._pendingReplyTimer = null;
+
+            if (shouldIgnore) return false;
+
+            // 显示 typing
+            if (settings.typingIndicatorEnabled) {
+                const tiWrapper = document.getElementById('typing-indicator-wrapper');
+                const tiLabel = document.getElementById('typing-indicator-label');
+                const tiAvatar = document.getElementById('typing-indicator-avatar');
+                if (tiLabel) tiLabel.textContent = (settings.partnerName || '对方') + ' 正在输入';
+                if (tiWrapper) {
+                    positionTypingIndicator();
+                    tiWrapper.style.display = 'block';
+                }
+                if (tiAvatar) {
+                    const partnerImg = DOMElements.partner.avatar.querySelector('img');
+                    tiAvatar.innerHTML = partnerImg ? `<img src="${partnerImg.src}">` : '<i class="fas fa-user"></i>';
+                }
+                if (DOMElements.chatContainer) DOMElements.chatContainer.scrollTop = DOMElements.chatContainer.scrollHeight;
+            }
+
+            // 排队回复
+            window._pendingReplyTimer = setTimeout(() => {
+                window._pendingReplyTimer = null;
+                simulateReply();
+                // 清除陪伴静默标志：延迟清除，确保 simulateReply 内部所有消息都已取到 recentUserMsgs 之后再清
+                setTimeout(() => { window._companionSilentTrigger = false; }, (settings.replyDelayMax || 3000) + 500);
+            }, randomDelay);
+            return true;
+        };
+
         window.simulateReply = function() {
             function showTypingIndicator() {
                 if (!settings.typingIndicatorEnabled) return;
@@ -1666,7 +1702,8 @@ if (partnerPersonas && partnerPersonas.length > 0 && Math.random() < 0.3) {
             // 确认有可用回复后再展示“正在输入中”，避免空转
             showTypingIndicator();
             let delay = 0;
-            const recentUserMsgs = settings.replyEnabled
+            // 陪伴页静默触发时不引用用户消息（陪伴中的触发不是用户发了某条具体消息）
+            const recentUserMsgs = (settings.replyEnabled && !window._companionSilentTrigger)
                 ? messages.filter(m => m.sender === 'user' && m.text).slice(-10)
                 : [];
             for (let i = 0; i < replyCount; i++) {
@@ -2222,7 +2259,7 @@ function showModal(modalElement, focusElement = null) {
                 newStatus = getRandomItem(CONSTANTS.PARTNER_STATUSES);
             }
             if (!newStatus) {
-                if (typeof showNotification === 'function') showNotification('状态库为空，请先添加内容', 'warning', 2500);
+                // 静默跳过（不再 toast 提示用户）
                 return;
             }
 
@@ -2302,6 +2339,11 @@ window.initializeSession = async function() {
     await localforage.setItem(`${APP_PREFIX}lastSessionId`, SESSION_ID);
 }
 
+// 监听系统昼夜变化，实时更新 data-theme
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     const chatArea = document.querySelector('.main-chat-area');
     const historyLoader = document.getElementById('history-loader');
@@ -2319,6 +2361,3 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(historyLoader);
     }
 });
-
-
-
