@@ -31,16 +31,6 @@ jobs:
           mkdir -p android/app/src/main/assets/www
           cp -r index.html css js assets manifest.json sw.js icons android/app/src/main/assets/www/
 
-      - name: Generate launcher icons
-        run: |
-          cd android/app/src/main/res
-          mkdir -p mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi
-          for entry in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
-            d="${entry%%:*}"
-            size="${entry##*:}"
-            convert "$GITHUB_WORKSPACE/icons/icon-512.png" -resize "${size}x${size}" "mipmap-${d}/ic_launcher.png"
-          done
-
       - name: Build APK
         run: |
           export PATH="$GITHUB_WORKSPACE/gradle-8.7/bin:$PATH"
