@@ -21,6 +21,18 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Cache signing keystore
+        uses: actions/cache@v4
+        with:
+          path: android/keystore
+          key: love-keystore-v1
+
+      - name: Ensure signing keystore
+        run: |
+          if [ ! -f android/keystore/love.keystore ]; then
+            keytool -genkeypair -v -keystore android/keystore/love.keystore -alias lilidreamlove -keyalg RSA -keysize 2048 -validity 10000 -storepass lilidreamlove -keypass lilidreamlove -dname "CN=LOVE, OU=lili, O=shenyu, L=city, S=state, C=CN"
+          fi
+
       - name: Download Gradle
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip
