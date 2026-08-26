@@ -6,7 +6,7 @@
         const MESSAGES_PER_PAGE = 50;
         
         const CONSTANTS = {
-            HEADER_MOTTOS: ["16:21，我在想你", "蓝门前的那个黄昏", "栗屿海的风很轻", "窗外那棵玉兰又开了一朵", "港口今天落日很好看", "潮起潮落，我都在"],
+            HEADER_MOTTOS: [],
             WELCOME_ANIMATIONS: [{
                 line1: "♡ 爱 ♡",
                 line2: "✧ 正在连接我们的思绪 ✧"
