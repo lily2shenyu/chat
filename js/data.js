@@ -256,6 +256,9 @@
         var n = document.getElementById('notif-permission-toggle');
         if (!n) return;
         if (window.AndroidBridge && typeof window.AndroidBridge.notify === 'function') {
+            if (localStorage.getItem('notifEnabled') === null) {
+                localStorage.setItem('notifEnabled', '1');
+            }
             n.checked = localStorage.getItem('notifEnabled') === '1';
             return;
         }
@@ -506,7 +509,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 window._sendPartnerNotification = function(title, body) {
     try {
-        if (localStorage.getItem('notifEnabled') !== '1') return;
+        var notifOn = localStorage.getItem('notifEnabled');
+        if (notifOn === null) notifOn = '1';
+        if (notifOn !== '1') return;
         if (window.AndroidBridge && typeof window.AndroidBridge.notify === 'function') {
             if (!document.hidden) return;
             window.AndroidBridge.notify(title || 'LOVE', body || '对方发来了消息');
