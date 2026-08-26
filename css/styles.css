@@ -786,6 +786,48 @@
     width: 12px;
         }
         }
+
+        /* ===== 顶部栏模块 · 微信式紧凑顶部栏 ===== */
+        .header.topbar-wechat .header-motto {
+            display: none !important;
+        }
+        .header.topbar-wechat .header-inner {
+            padding: 4px 12px !important;
+            justify-content: space-between !important;
+            max-width: none !important;
+            height: 48px;
+            box-sizing: border-box;
+        }
+        .header.topbar-wechat .user-info {
+            flex-direction: row !important;
+            align-items: center !important;
+            gap: 8px !important;
+            min-width: 0 !important;
+        }
+        .header.topbar-wechat .user-info .avatar,
+        .header.topbar-wechat .user-info .avatar img {
+            width: 34px !important;
+            height: 34px !important;
+        }
+        .header.topbar-wechat .user-info .username {
+            font-size: 15px !important;
+            font-weight: 500 !important;
+            color: var(--text-primary) !important;
+            max-width: 110px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            letter-spacing: 0 !important;
+        }
+        .header.topbar-wechat .user-info .status {
+            display: none !important;
+        }
+        .header.topbar-wechat .header-actions {
+            gap: 14px !important;
+        }
+        .header.topbar-wechat .header-actions .action-btn {
+            font-size: 15px !important;
+        }
         
 
         .user-info {
