@@ -20,12 +20,15 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.graphics.Rect;
+import android.view.ViewTreeObserver;
 
 public class MainActivity extends Activity {
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private static final int FILE_CHOOSER_REQ = 100;
+    private boolean mKeyboardVisible = false;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -42,6 +45,28 @@ public class MainActivity extends Activity {
 
         webView = new WebView(this);
         setContentView(webView);
+
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+
+        final View content = findViewById(android.R.id.content);
+        content.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                Rect r = new Rect();
+                content.getWindowVisibleDisplayFrame(r);
+                int screenHeight = content.getRootView().getHeight();
+                int keypadHeight = screenHeight - r.bottom;
+                boolean visible = keypadHeight > screenHeight * 0.15;
+                if (visible != mKeyboardVisible) {
+                    mKeyboardVisible = visible;
+                    if (visible) {
+                        getWindow().getDecorView().setSystemUiVisibility(0);
+                    } else {
+                        enterFullscreen();
+                    }
+                }
+            }
+        });
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -116,7 +141,7 @@ public class MainActivity extends Activity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) {
+        if (hasFocus && !mKeyboardVisible) {
             enterFullscreen();
         }
     }
