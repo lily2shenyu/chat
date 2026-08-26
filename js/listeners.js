@@ -94,9 +94,7 @@ if (target.classList.contains('delete-btn')) {
                     currentReplyTo = {
                         id: message.id,
                         sender: message.sender,
-                        text: message.text,
-                        image: message.image || null,
-                        voice: message.voice || null
+                        text: message.text
                     };
                     updateReplyPreview();
                     DOMElements.messageInput.focus();
@@ -170,8 +168,7 @@ if (target.classList.contains('delete-btn')) {
                 DOMElements.editModal.save.disabled = !DOMElements.editModal.input.value.trim();
             });
             DOMElements.pokeModal.save.addEventListener('click', () => {
-                const verb = DOMElements.pokeModal.input.value.trim() || settings.myPokeText || '拍了拍';
-                let pokeText = `${settings.myName} ${verb} ${settings.partnerName}`;
+                let pokeText = DOMElements.pokeModal.input.value.trim() || `${settings.myName} 拍了拍 ${settings.partnerName}`;
                 if (typeof window._sanitizePokeTextForDisplay === 'function') {
                     pokeText = window._sanitizePokeTextForDisplay(pokeText);
                 }
@@ -196,7 +193,7 @@ if (target.classList.contains('delete-btn')) {
                     }
                 }
                 hideModal(DOMElements.pokeModal.modal);
-                DOMElements.pokeModal.input.value = settings.myPokeText || '';
+                DOMElements.pokeModal.input.value = '';
                 const delayRange = settings.replyDelayMax - settings.replyDelayMin;
                 const randomDelay = settings.replyDelayMin + Math.random() * delayRange;
                 setTimeout(simulateReply, randomDelay);
@@ -404,7 +401,10 @@ fileInput.addEventListener('change', function(e) {
                 statusContainer.innerHTML = ''; statusContainer.appendChild(input); input.focus();
             });
 
-
+            DOMElements.themeToggle.addEventListener('click', () => {
+                settings.isDarkMode = !settings.isDarkMode; throttledSaveData(); updateUI(); showNotification(`已切换到${settings.isDarkMode ? '夜': '昼'}模式`,
+                    'success');
+            });
             DOMElements.settingsModal.settingsBtn.addEventListener('click', () => {
                 showModal(DOMElements.settingsModal.modal);
             });
@@ -473,46 +473,9 @@ if (_chatSettingsEl) _chatSettingsEl.addEventListener('click', () => {
 
     setSelect('sound-my-poke-preset', settings.myPokeSoundPreset || 'tone_low');
     setSoundUrlInput('sound-my-poke-custom-url', (settings.myPokeCustomSoundUrl || '').trim() || legacyCustom);
-    const myPokeTextInput = document.getElementById('my-poke-text-input');
-    if (myPokeTextInput) myPokeTextInput.value = settings.myPokeText || '';
-    // 更新预览姓名标签
-    const pokeMyName = document.getElementById('poke-preview-myname');
-    const pokePartnerName = document.getElementById('poke-preview-partnername');
-    const pokePreview = document.getElementById('poke-action-preview');
-    if (pokeMyName) pokeMyName.textContent = settings.myName || '我';
-    if (pokePartnerName) pokePartnerName.textContent = settings.partnerName || '对方';
-    if (pokePreview) pokePreview.textContent = `${settings.myName || '我'} ${settings.myPokeText || '拍了拍'} ${settings.partnerName || '对方'}`;
-    // 实时预览更新
-    if (myPokeTextInput) {
-        myPokeTextInput.oninput = () => {
-            const verb = myPokeTextInput.value.trim() || '拍了拍';
-            if (pokePreview) pokePreview.textContent = `${settings.myName || '我'} ${verb} ${settings.partnerName || '对方'}`;
-        };
-    }
-    // 保存按钮
-    const myPokeSaveBtn = document.getElementById('my-poke-text-save');
-    if (myPokeSaveBtn) {
-        myPokeSaveBtn.onclick = () => {
-            settings.myPokeText = myPokeTextInput ? myPokeTextInput.value.trim() : '';
-            throttledSaveData();
-            if (typeof showNotification === 'function') showNotification('已保存', 'success', 1500);
-        };
-    }
 
     setSelect('sound-partner-poke-preset', settings.partnerPokeSoundPreset || 'tone_low');
     setSoundUrlInput('sound-partner-poke-custom-url', (settings.partnerPokeCustomSoundUrl || '').trim() || legacyCustom);
-
-    // 邀请音效（5 项）
-    setSelect('sound-invite-study-preset', settings.inviteStudySoundPreset || 'default');
-    setSoundUrlInput('sound-invite-study-custom-url', settings.inviteStudyCustomSoundUrl || '');
-    setSelect('sound-invite-work-preset', settings.inviteWorkSoundPreset || 'default');
-    setSoundUrlInput('sound-invite-work-custom-url', settings.inviteWorkCustomSoundUrl || '');
-    setSelect('sound-invite-exercise-preset', settings.inviteExerciseSoundPreset || 'default');
-    setSoundUrlInput('sound-invite-exercise-custom-url', settings.inviteExerciseCustomSoundUrl || '');
-    setSelect('sound-invite-sleep-preset', settings.inviteSleepSoundPreset || 'default');
-    setSoundUrlInput('sound-invite-sleep-custom-url', settings.inviteSleepCustomSoundUrl || '');
-    setSelect('sound-invite-videocall-preset', settings.inviteVideocallSoundPreset || 'default');
-    setSoundUrlInput('sound-invite-videocall-custom-url', settings.inviteVideocallCustomSoundUrl || '');
     document.querySelectorAll('.time-fmt-opt').forEach(opt => {
         opt.classList.toggle('active', opt.dataset.fmt === (settings.timeFormat || 'HH:mm'));
     });
@@ -541,6 +504,37 @@ if (_chatSettingsEl) _chatSettingsEl.addEventListener('click', () => {
             if (_dataSettingsEl) _dataSettingsEl.addEventListener('click', () => {
                 hideModal(DOMElements.settingsModal.modal);
                 showModal(DOMElements.dataModal.modal);
+                (async function calcDmStorage() {
+                    try {
+                        let total = 0, msgsSize = 0, settingsSize = 0, mediaSize = 0;
+                        const keys = await localforage.keys();
+                        for (const k of keys) {
+                            const raw = await localforage.getItem(k);
+                            const str = typeof raw === 'string' ? raw : JSON.stringify(raw);
+                            const bytes = new Blob([str]).size;
+                            total += bytes;
+                            if (/messages|msgs/i.test(k)) msgsSize += bytes;
+                            else if (/avatar|image|photo|bg|background|wallpaper/i.test(k)) mediaSize += bytes;
+                            else settingsSize += bytes;
+                        }
+                        const fmt = b => b > 1048576 ? (b/1048576).toFixed(1)+'MB' : b > 1024 ? (b/1024).toFixed(0)+'KB' : b+'B';
+                        const MAX = 5 * 1024 * 1024;
+                        const pct = Math.min(100, Math.round(total / MAX * 100));
+                        const barEl = document.getElementById('dm-storage-bar');
+                        const totalEl = document.getElementById('dm-storage-total');
+                        if (barEl) barEl.style.width = pct + '%';
+                        if (totalEl) totalEl.textContent = fmt(total);
+                        const msgsEl = document.getElementById('dm-stat-msgs');
+                        const setEl = document.getElementById('dm-stat-settings');
+                        const medEl = document.getElementById('dm-stat-media');
+                        if (msgsEl) msgsEl.textContent = fmt(msgsSize);
+                        if (setEl) setEl.textContent = fmt(settingsSize);
+                        if (medEl) medEl.textContent = fmt(mediaSize);
+                    } catch(e) {
+                        const totalEl = document.getElementById('dm-storage-total');
+                        if (totalEl) totalEl.textContent = '无法读取';
+                    }
+                })();
             });
             const exportChatBtnDm = document.getElementById('export-chat-btn');
             const importChatBtnDm = document.getElementById('import-chat-btn');
@@ -1115,11 +1109,6 @@ if (_chatSettingsEl) _chatSettingsEl.addEventListener('click', () => {
             bindPresetSelect('sound-partner-message-preset', 'partnerMessageSoundPreset');
             bindPresetSelect('sound-my-poke-preset', 'myPokeSoundPreset');
             bindPresetSelect('sound-partner-poke-preset', 'partnerPokeSoundPreset');
-            bindPresetSelect('sound-invite-study-preset', 'inviteStudySoundPreset');
-            bindPresetSelect('sound-invite-work-preset', 'inviteWorkSoundPreset');
-            bindPresetSelect('sound-invite-exercise-preset', 'inviteExerciseSoundPreset');
-            bindPresetSelect('sound-invite-sleep-preset', 'inviteSleepSoundPreset');
-            bindPresetSelect('sound-invite-videocall-preset', 'inviteVideocallSoundPreset');
 
             const bindCustomUrlInput = (inputId, settingsKey) => {
                 const el = document.getElementById(inputId);
@@ -1138,11 +1127,6 @@ if (_chatSettingsEl) _chatSettingsEl.addEventListener('click', () => {
             bindCustomUrlInput('sound-partner-message-custom-url', 'partnerMessageCustomSoundUrl');
             bindCustomUrlInput('sound-my-poke-custom-url', 'myPokeCustomSoundUrl');
             bindCustomUrlInput('sound-partner-poke-custom-url', 'partnerPokeCustomSoundUrl');
-            bindCustomUrlInput('sound-invite-study-custom-url', 'inviteStudyCustomSoundUrl');
-            bindCustomUrlInput('sound-invite-work-custom-url', 'inviteWorkCustomSoundUrl');
-            bindCustomUrlInput('sound-invite-exercise-custom-url', 'inviteExerciseCustomSoundUrl');
-            bindCustomUrlInput('sound-invite-sleep-custom-url', 'inviteSleepCustomSoundUrl');
-            bindCustomUrlInput('sound-invite-videocall-custom-url', 'inviteVideocallCustomSoundUrl');
 
             // 本地音频文件上传
             const bindAudioUpload = (btnId, fileInputId, urlInputId, settingsKey, presetSelectId) => {
@@ -1175,11 +1159,6 @@ if (_chatSettingsEl) _chatSettingsEl.addEventListener('click', () => {
             bindAudioUpload('upload-sound-partner-message-btn', 'upload-sound-partner-message-file', 'sound-partner-message-custom-url', 'partnerMessageCustomSoundUrl', 'sound-partner-message-preset');
             bindAudioUpload('upload-sound-my-poke-btn', 'upload-sound-my-poke-file', 'sound-my-poke-custom-url', 'myPokeCustomSoundUrl', 'sound-my-poke-preset');
             bindAudioUpload('upload-sound-partner-poke-btn', 'upload-sound-partner-poke-file', 'sound-partner-poke-custom-url', 'partnerPokeCustomSoundUrl', 'sound-partner-poke-preset');
-            bindAudioUpload('upload-sound-invite-study-btn', 'upload-sound-invite-study-file', 'sound-invite-study-custom-url', 'inviteStudyCustomSoundUrl', 'sound-invite-study-preset');
-            bindAudioUpload('upload-sound-invite-work-btn', 'upload-sound-invite-work-file', 'sound-invite-work-custom-url', 'inviteWorkCustomSoundUrl', 'sound-invite-work-preset');
-            bindAudioUpload('upload-sound-invite-exercise-btn', 'upload-sound-invite-exercise-file', 'sound-invite-exercise-custom-url', 'inviteExerciseCustomSoundUrl', 'sound-invite-exercise-preset');
-            bindAudioUpload('upload-sound-invite-sleep-btn', 'upload-sound-invite-sleep-file', 'sound-invite-sleep-custom-url', 'inviteSleepCustomSoundUrl', 'sound-invite-sleep-preset');
-            bindAudioUpload('upload-sound-invite-videocall-btn', 'upload-sound-invite-videocall-file', 'sound-invite-videocall-custom-url', 'inviteVideocallCustomSoundUrl', 'sound-invite-videocall-preset');
 
             const btnMySend = document.getElementById('test-sound-my-send-btn');
             if (btnMySend) btnMySend.addEventListener('click', () => playSound('my_send'));
@@ -1192,41 +1171,6 @@ if (_chatSettingsEl) _chatSettingsEl.addEventListener('click', () => {
 
             const btnPartnerPoke = document.getElementById('test-sound-partner-poke-btn');
             if (btnPartnerPoke) btnPartnerPoke.addEventListener('click', () => playSound('partner_poke'));
-
-            // 邀请音效试听按钮：再次点击暂停 + 不循环（关闭弹窗也会停止，见下方监听）
-            const inviteSoundTests = [
-                ['test-sound-invite-study-btn', 'invite_study'],
-                ['test-sound-invite-work-btn', 'invite_work'],
-                ['test-sound-invite-exercise-btn', 'invite_exercise'],
-                ['test-sound-invite-sleep-btn', 'invite_sleep'],
-                ['test-sound-invite-videocall-btn', 'invite_videocall']
-            ];
-            // 记录当前哪个邀请音效正在试听
-            let _currentInvitePreviewBtnId = null;
-            inviteSoundTests.forEach(([btnId, soundType]) => {
-                const btn = document.getElementById(btnId);
-                if (!btn) return;
-                btn.addEventListener('click', () => {
-                    // 如果当前按钮正在试听，则停止
-                    if (_currentInvitePreviewBtnId === btnId) {
-                        if (typeof window.stopCurrentSound === 'function') window.stopCurrentSound();
-                        _currentInvitePreviewBtnId = null;
-                        return;
-                    }
-                    // 否则停止其他、开始本按钮（不循环）
-                    if (typeof window.stopCurrentSound === 'function') window.stopCurrentSound();
-                    playSound(soundType, false);
-                    _currentInvitePreviewBtnId = btnId;
-                });
-            });
-            // 关闭聊天设置弹窗时停止试听
-            const chatModalCloseBtn = document.getElementById('close-chat');
-            if (chatModalCloseBtn) {
-                chatModalCloseBtn.addEventListener('click', () => {
-                    if (typeof window.stopCurrentSound === 'function') window.stopCurrentSound();
-                    _currentInvitePreviewBtnId = null;
-                });
-            }
 
             document.querySelectorAll('.time-fmt-opt').forEach(opt => {
                 opt.classList.toggle('active', opt.dataset.fmt === (settings.timeFormat || 'HH:mm'));
@@ -1247,7 +1191,6 @@ if (_chatSettingsEl) _chatSettingsEl.addEventListener('click', () => {
                 window.hideAppearancePanel && window.hideAppearancePanel();
                 renderBackgroundGallery();
                 renderThemeSchemesList();
-                if (typeof window.renderDiaryBgGallery === 'function') window.renderDiaryBgGallery();
                 
                 const fontSizeSliderEl = document.getElementById('font-size-slider');
                 const fontSizeValueEl = document.getElementById('font-size-value');
@@ -1376,26 +1319,21 @@ autoSendSlider.addEventListener('change', () => {
                 hideModal(document.getElementById('fortune-lenormand-modal'));
             });
     const envelopeEntryBtn = document.getElementById('envelope-function');
-    async function openEnvelopeModal() {
-        hideModal(DOMElements.advancedModal.modal);
-        await loadEnvelopeData();
-        await checkEnvelopeStatus();
-        currentEnvTab = 'outbox';
-        document.getElementById('env-tab-outbox').classList.add('active');
-        document.getElementById('env-tab-inbox').classList.remove('active');
-        document.getElementById('env-outbox-section').style.display = 'block';
-        document.getElementById('env-inbox-section').style.display = 'none';
-        document.getElementById('env-compose-form').style.display = 'none';
-        document.getElementById('env-main-close-btn').style.display = 'flex';
-        renderEnvelopeLists();
-        showModal(document.getElementById('envelope-modal'));
-    }
     if (envelopeEntryBtn) {
-        envelopeEntryBtn.addEventListener('click', openEnvelopeModal);
-    }
-    const envelopeHeaderBtn = document.getElementById('envelope-header-btn');
-    if (envelopeHeaderBtn) {
-        envelopeHeaderBtn.addEventListener('click', openEnvelopeModal);
+        envelopeEntryBtn.addEventListener('click', async () => {
+            hideModal(DOMElements.advancedModal.modal);
+            await loadEnvelopeData();
+            await checkEnvelopeStatus();
+            currentEnvTab = 'outbox';
+            document.getElementById('env-tab-outbox').classList.add('active');
+            document.getElementById('env-tab-inbox').classList.remove('active');
+            document.getElementById('env-outbox-section').style.display = 'block';
+            document.getElementById('env-inbox-section').style.display = 'none';
+            document.getElementById('env-compose-form').style.display = 'none';
+            document.getElementById('env-main-close-btn').style.display = 'flex';
+            renderEnvelopeLists();
+            showModal(document.getElementById('envelope-modal'));
+        });
     }
     const galleryBanner = document.getElementById('gallery-banner-entry');
     if (galleryBanner) {

@@ -209,16 +209,12 @@
         var sw   = document.getElementById('keepalive-audio-switch');
         var row  = document.getElementById('keepalive-bar-row');
 
-        if (sw) {
-            sw.classList.toggle('active', _get());
-            var toggleRow = document.getElementById('keepalive-audio-toggle');
-            if (toggleRow) toggleRow.classList.toggle('active', _get());
-        }
+        if (sw)   sw.classList.toggle('active', _get());
         if (dot) {
             dot.className = 'keepalive-dot' + (playing ? ' alive' : '');
         }
         if (desc) {
-            if (!_get())      desc.textContent = '保持后台运行，不错过ta的消息';
+            if (!_get())      desc.textContent = '静音循环音频，防止页面被系统挂起';
             else if (playing) desc.textContent = '运行中 · 页面已保活';
             else              desc.textContent = '等待交互后启动…';
         }
@@ -254,13 +250,11 @@
         if (next) {
             _start();
             if (typeof showNotification === 'function') showNotification('保活音频已开启 🎵', 'success', 2000);
-            // 立即更新开关颜色，不等待异步 play() 返回
-            _setUI(true);
         } else {
             _stop();
             if (typeof showNotification === 'function') showNotification('保活音频已关闭', 'info', 1500);
-            _setUI(false);
         }
+        _setUI(next && _audio && !_audio.paused);
     };
 
     document.addEventListener('visibilitychange', function(){
@@ -549,9 +543,6 @@ function showPokeTab() {
     `;
     customBtn.onclick = () => {
         document.getElementById('user-sticker-picker').classList.remove('active');
-        if (DOMElements.pokeModal.input) {
-            DOMElements.pokeModal.input.value = settings.myPokeText || '';
-        }
         showModal(DOMElements.pokeModal.modal, DOMElements.pokeModal.input);
     };
     area.appendChild(customBtn);
@@ -1526,8 +1517,22 @@ window.updateDynamicNames = function() {
         var continueBtn = document.getElementById('continue-btn');
         if (continueBtn) continueBtn.title = '让' + pName + '继续说';
 
+        var envInfo = document.querySelector('.env-send-info');
+        if (envInfo) {
+            var textNodes = Array.from(envInfo.childNodes).filter(n => n.nodeType === 3);
+            textNodes.forEach(function(n) {
+                if (n.textContent.includes('对方将在') || n.textContent.includes('小时内回信')) {
+                    n.textContent = pName + ' 将在 10-24 小时内回信（8-12 句话）';
+                }
+            });
+        }
+
+        setDgLabel('dg-section-label-partner', pName + ' 今日状态');
+        setDgLabel('dg-weather-label', pName + ' 的天气');
+        setDgLabel('dg-status-label', pName + ' 的状态');
+
         var envInfoSpan = document.getElementById('env-reply-time-info');
-        if (envInfoSpan) envInfoSpan.textContent = '传递你的心意吧';
+        if (envInfoSpan) envInfoSpan.textContent = pName + ' 将在 10-24 小时内回信（8-12 句话）';
 
         var pokeInput = document.getElementById('poke-input');
         if (pokeInput) pokeInput.placeholder = '例如：拍了拍"' + pName + '"的肩膀';
@@ -1607,3 +1612,4 @@ window.tryShowDailyGreeting = function() {
         if (modal) modal.classList.remove('hidden');
     } catch(e) { console.warn('Daily greeting show error:', e); }
 };
+

@@ -828,11 +828,7 @@ function renderFavorites() {
         }) : '';
         const content = msg.text
             ? msg.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            : msg.image
-                ? `<img src="${msg.image}" style="max-width:100%;max-height:180px;border-radius:8px;display:block;margin-top:4px;cursor:pointer;" onclick="if(typeof viewImage==='function')viewImage('${msg.image.replace(/'/g,'\\\'')}')" loading="lazy">`
-                : msg.voice
-                    ? `<div style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(var(--accent-color-rgb),0.1);border-radius:20px;"><svg viewBox="0 0 22 22" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-color);flex-shrink:0;"><circle cx="6" cy="11" r="1.3" fill="currentColor" stroke="none"/><path d="M10 8 A 3.5 3.5 0 0 1 10 14"/><path d="M13 5 A 7 7 0 0 1 13 17"/></svg><span style="font-size:12px;color:var(--accent-color);">${msg.voice.duration || 0}"</span></div>${msg.voice.fakeText ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">${msg.voice.fakeText.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : ''}`
-                    : '';
+            : (msg.image ? `<img src="${msg.image}" style="max-width:100%;max-height:180px;border-radius:8px;display:block;margin-top:4px;cursor:pointer;" onclick="if(typeof viewImage==='function')viewImage('${msg.image.replace(/'/g,'\\\'')}')" loading="lazy">` : '');
         const avatarEl = isUser
             ? (typeof DOMElements !== 'undefined' ? DOMElements.me.avatar : null)
             : (typeof DOMElements !== 'undefined' ? DOMElements.partner.avatar : null);
@@ -873,17 +869,6 @@ function renderFavorites() {
                 msg.favorited = false;
                 if (typeof throttledSaveData === 'function') throttledSaveData();
                 if (typeof showNotification === 'function') showNotification('已取消收藏', 'success', 1500);
-                // 同步更新聊天里对应消息的星星按钮状态
-                const chatWrapper = document.querySelector(`.message-wrapper[data-msg-id="${id}"], .message-wrapper[data-id="${id}"]`);
-                if (chatWrapper) {
-                    const favBtn = chatWrapper.querySelector('.favorite-action-btn');
-                    if (favBtn) {
-                        favBtn.classList.remove('favorited');
-                        favBtn.title = '收藏';
-                        const icon = favBtn.querySelector('i');
-                        if (icon) { icon.className = 'far fa-star'; }
-                    }
-                }
                 renderFavorites();
             }
         });
@@ -1372,9 +1357,6 @@ function initComboMenu() {
         customBtn.onclick = (e) => {
             e.stopPropagation();
             picker.classList.remove('active');
-            if (DOMElements.pokeModal.input) {
-                DOMElements.pokeModal.input.value = settings.myPokeText || '';
-            }
             showModal(DOMElements.pokeModal.modal, DOMElements.pokeModal.input);
         };
         wrapper.appendChild(customBtn);
