@@ -9,12 +9,8 @@
     })();
 
     var INNER_HTML =
-        '<div class="dm-topbar">'
-        +   '<div class="dm-topbar-left">'
-        +     '<button class="dm-topbar-back" id="back-data"><i class="fas fa-arrow-left"></i></button>'
-        +     '<span class="dm-topbar-title">数据管理</span>'
-        +   '</div>'
-        +   '<button class="dm-topbar-close" id="close-data"><i class="fas fa-xmark"></i></button>'
+        '<div class="modal-title" style="flex-shrink:0;">'
+        +   '<i class="fas fa-database"></i><span>数据管理</span>'
         + '</div>'
 
         + '<div class="dm-body">'
@@ -53,13 +49,8 @@
         +     '<button id="import-chat-btn"></button>'
         +   '</div>'
 
-        +   '<div class="dm-section-label"><i class="fas fa-bell"></i> 通知与关于</div>'
+        +   '<div class="dm-section-label"><i class="fas fa-info-circle"></i> 关于</div>'
         +   '<div class="dm-row-card">'
-        +     '<div class="dm-row-item">'
-        +       '<div class="dm-row-icon amber"><i class="fas fa-bell"></i></div>'
-        +       '<div class="dm-row-info"><div class="dm-row-title">后台消息推送</div><div class="dm-row-desc" id="notif-status-text">收到新消息时弹出提醒</div></div>'
-        +       '<label class="dm-toggle-pill"><input type="checkbox" id="notif-permission-toggle" onchange="handleNotifToggle(this)"><span class="dm-toggle-slider"></span></label>'
-        +     '</div>'
         +     '<div class="dm-row-item" id="replay-tutorial-btn-row" style="cursor:pointer">'
         +       '<div class="dm-row-icon slate"><i class="fas fa-compass"></i></div>'
         +       '<div class="dm-row-info"><div class="dm-row-title">重放新手引导</div><div class="dm-row-desc">重新播放功能介绍教程</div></div>'
@@ -91,7 +82,10 @@
         +   '</div>'
 
         + '</div>'
-        ;
+        + '<div class="modal-buttons" style="display:flex;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--border-color);background:var(--secondary-bg);flex-shrink:0;">'
+        +   '<button class="modal-btn modal-btn-secondary" id="back-data"><i class="fas fa-arrow-left"></i> 返回</button>'
+        +   '<button class="modal-btn modal-btn-secondary" id="close-data">关闭</button>'
+        + '</div>';
 
     var DRAWER_FULL_HTML =
         '<div class="dm-action-drawer" id="dm-drawer-full">'
@@ -137,10 +131,10 @@
         +     '</div>'
         +     '<button class="dm-drawer-cancel" id="dm-drawer-chat-cancel">取消</button>'
         +   '</div>'
-        + '</div>';
+        + '</div>'
 
     function isCorrect(mc) {
-        return mc.querySelector('.dm-topbar') !== null
+        return mc.querySelector('.modal-title') !== null
             && mc.querySelector('.dm-storage-card') !== null
             && mc.querySelector('.dm6') === null
             && mc.querySelector('.dm6-tabs') === null;
@@ -164,40 +158,60 @@
 
     function writeHTML(mc) {
         mc.innerHTML = INNER_HTML;
-        mc.dataset.dm6Built = 'v9'; 
+        mc.dataset.dm6Built = 'v11'; 
         ensureDrawersOnBody();
         bindAll(mc);
     }
 
     function ensureHTML(mc) {
         if (!mc) return;
-        mc.dataset.dm6Built = 'v9'; 
-        if (!isCorrect(mc)) writeHTML(mc);
+        if (mc.dataset.dm6Built !== 'v11' || !isCorrect(mc)) writeHTML(mc);
         else ensureDrawersOnBody(); 
     }
 
     function fmt(b) {
-        if (b < 1024) return b + ' B';
+        if (b < 1024) return Math.round(b) + ' B';
         if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
         return (b / 1048576).toFixed(2) + ' MB';
     }
 
     function applyStats(total, msgs, cfg, media) {
-        var pct = Math.min(100, total / (5 * 1024 * 1024) * 100);
         var g = function (id) { return document.getElementById(id); };
-        var bar = g('dm-storage-bar');
-        if (bar) {
-            bar.style.width = pct.toFixed(1) + '%';
-            bar.style.background = pct > 80
-                ? 'linear-gradient(90deg,#FF3B30,#CC0000)'
-                : pct > 50
-                ? 'linear-gradient(90deg,#FF9F0A,#E07000)'
-                : 'linear-gradient(90deg,var(--accent-color),rgba(var(--accent-color-rgb),0.6))';
-        }
-        if (g('dm-storage-total')) g('dm-storage-total').textContent = fmt(total) + ' / ~5 MB';
+
+        // 直接显示手动累加的分类
         if (g('dm-stat-msgs'))     g('dm-stat-msgs').textContent     = fmt(msgs);
         if (g('dm-stat-settings')) g('dm-stat-settings').textContent = fmt(cfg);
         if (g('dm-stat-media'))    g('dm-stat-media').textContent    = fmt(media);
+
+        // 顶部总用量 = total（手动累加），进度条 = total / quota
+        var totalEl = g('dm-storage-total');
+        var barEl   = g('dm-storage-bar');
+
+        if (navigator.storage && navigator.storage.estimate) {
+            navigator.storage.estimate().then(function(est) {
+                var quota = est.quota || 0;
+                var pct = quota > 0 ? Math.min(100, total / quota * 100) : 0;
+                var pctStr = pct.toFixed(1);
+                var quotaStr = quota >= 1073741824 ? (quota/1073741824).toFixed(2)+' GB'
+                             : quota >= 1048576    ? (quota/1048576).toFixed(1)+' MB'
+                             : quota > 0           ? (quota/1024).toFixed(1)+' KB' : '未知';
+                if (totalEl) totalEl.textContent = fmt(total) + ' / ' + quotaStr + ' (' + pctStr + '%)';
+                if (barEl) {
+                    barEl.style.width = pctStr + '%';
+                    barEl.style.background = pct > 80
+                        ? 'linear-gradient(90deg,#FF3B30,#CC0000)'
+                        : pct > 50
+                        ? 'linear-gradient(90deg,#FF9F0A,#E07000)'
+                        : 'linear-gradient(90deg,var(--accent-color),rgba(var(--accent-color-rgb),0.6))';
+                }
+            }).catch(function() {
+                if (totalEl) totalEl.textContent = fmt(total);
+                if (barEl) barEl.style.width = '0%';
+            });
+        } else {
+            if (totalEl) totalEl.textContent = fmt(total);
+            if (barEl) barEl.style.width = '0%';
+        }
     }
 
     function updateStats() {
@@ -458,59 +472,12 @@
         init();
     }
 
+    window.updateStats = updateStats;
+
 })();
 
 function updateStorageUsageBar() {
-    var bar   = document.getElementById('dm-storage-bar')   || document.getElementById('storage-usage-fill');
-    var text  = document.getElementById('dm-storage-total') || document.getElementById('storage-usage-text');
-    if (!bar && !text) return;
-
-    try {
-        if (window.localforage && window.APP_PREFIX) {
-            localforage.keys().then(function(keys) {
-                var promises = keys.map(function(k) {
-                    return localforage.getItem(k).then(function(v) {
-                        if (v === null || v === undefined) return 0;
-                        var str = typeof v === 'string' ? v : JSON.stringify(v);
-                        return (k.length + str.length) * 2;
-                    });
-                });
-                Promise.all(promises).then(function(sizes) {
-                    var total   = sizes.reduce(function(a,b){return a+b;},0);
-                    var usedKB  = (total / 1024).toFixed(1);
-                    var maxBytes = 5 * 1024 * 1024;
-                    var pct     = Math.min(total / maxBytes * 100, 100).toFixed(1);
-                    var fmt     = function(b) { return b<1024 ? b+' B' : b<1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(2)+' MB'; };
-
-                    if (bar) {
-                        bar.style.width = pct + '%';
-                        if (parseFloat(pct) > 80)
-                            bar.style.background = 'linear-gradient(90deg,#FF3B30,#CC0000)';
-                        else if (parseFloat(pct) > 50)
-                            bar.style.background = 'linear-gradient(90deg,#FF9F0A,#E07000)';
-                        else
-                            bar.style.background = 'linear-gradient(90deg,var(--accent-color),rgba(var(--accent-color-rgb),0.6))';
-                    }
-                    if (text) text.textContent = fmt(total) + ' / ~5 MB (' + pct + '%)';
-                });
-            }).catch(function() {
-                var ls = 0;
-                for (var i = 0; i < localStorage.length; i++) {
-                    var k = localStorage.key(i) || '';
-                    var v = localStorage.getItem(k) || '';
-                    ls += (k.length + v.length) * 2;
-                }
-                var pct = Math.min(ls / (5*1024*1024) * 100, 100).toFixed(1);
-                if (bar) bar.style.width = pct + '%';
-                if (text) text.textContent = (ls/1024).toFixed(1) + ' KB (localStorage)';
-            });
-        } else {
-            if (text) text.textContent = '暂无数据';
-            if (bar)  bar.style.width  = '0%';
-        }
-    } catch(e) {
-        if (text) text.textContent = '无法读取';
-    }
+    if (typeof window.updateStats === 'function') window.updateStats();
 }
 
 (function() {
@@ -535,6 +502,11 @@ document.addEventListener('DOMContentLoaded', function() {
 window._sendPartnerNotification = function(title, body) {
     try {
         if (localStorage.getItem('notifEnabled') !== '1') return;
+        if (window.AndroidBridge && typeof window.AndroidBridge.notify === 'function') {
+            if (!document.hidden) return;
+            window.AndroidBridge.notify(title || 'LOVE', body || '对方发来了消息');
+            return;
+        }
         if (!('Notification' in window)) return;
         if (Notification.permission !== 'granted') return;
         if (!document.hidden) return;
