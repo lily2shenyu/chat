@@ -6,6 +6,15 @@ android {
     namespace 'com.lilidreamlove.app'
     compileSdk 34
 
+    signingConfigs {
+        love {
+            storeFile file('../keystore/love.keystore')
+            storePassword 'lilidreamlove'
+            keyAlias 'lilidreamlove'
+            keyPassword 'lilidreamlove'
+        }
+    }
+
     defaultConfig {
         applicationId "com.lilidreamlove.app"
         minSdk 24
@@ -15,7 +24,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.love
+        }
         release {
+            signingConfig signingConfigs.love
             minifyEnabled false
         }
     }
