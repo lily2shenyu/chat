@@ -634,8 +634,7 @@ const saveData = async () => {
 if (customMottos && customMottos.length > 0) {
     document.querySelector('.header-motto').textContent = getRandomItem(customMottos);
 } else {
-    const fallbackMottos = ["16:21，我在想你", "蓝门前的那个黄昏", "栗屿海的风很轻", "窗外那棵玉兰又开了一朵", "港口今天落日很好看", "潮起潮落，我都在"];
-    document.querySelector('.header-motto').textContent = getRandomItem(fallbackMottos);
+    document.querySelector('.header-motto').textContent = '';
 }
             const placeholder = "";
             DOMElements.messageInput.placeholder = placeholder.length > 20 ? placeholder.substring(0, 20) + "...": placeholder;
