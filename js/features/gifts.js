@@ -73,6 +73,7 @@
             return '<div class="gift-grid-item' + (selectedImage === i ? ' selected' : '') + '" onclick="selectGiftImage(' + i + ')">'
                 + '<img src="' + img + '" alt="礼物">'
                 + '<div class="gift-check"><i class="fas fa-check"></i></div>'
+                + '<div class="gift-del" onclick="event.stopPropagation();removeGiftImage(' + i + ')">✕</div>'
                 + '</div>';
         }).join('');
     }
@@ -80,6 +81,16 @@
     window.selectGiftImage = function (i) {
         selectedImage = (selectedImage === i) ? null : i;
         renderGiftImages();
+    };
+
+    window.removeGiftImage = function (i) {
+        if (i >= 0 && i < gifts.images.length) {
+            gifts.images.splice(i, 1);
+            if (selectedImage === i) selectedImage = null;
+            save();
+            renderGiftImages();
+            if (typeof showNotification === 'function') showNotification('已删除这张礼物图片', 'success');
+        }
     };
 
     window.triggerGiftImageUpload = function () {
@@ -127,6 +138,7 @@
             return '<div class="gift-text-item' + (selectedText === i ? ' selected' : '') + '" onclick="selectGiftText(' + i + ')">'
                 + '<div class="gift-check"><i class="fas fa-check"></i></div>'
                 + '<div class="gift-text-content">' + String(t).replace(/[<>&]/g, '') + '</div>'
+                + '<div class="gift-del" onclick="event.stopPropagation();removeGiftText(' + i + ')">✕</div>'
                 + '</div>';
         }).join('');
     }
@@ -134,6 +146,16 @@
     window.selectGiftText = function (i) {
         selectedText = (selectedText === i) ? null : i;
         renderGiftTexts();
+    };
+
+    window.removeGiftText = function (i) {
+        if (i >= 0 && i < gifts.texts.length) {
+            gifts.texts.splice(i, 1);
+            if (selectedText === i) selectedText = null;
+            save();
+            renderGiftTexts();
+            if (typeof showNotification === 'function') showNotification('已删除这条寄语', 'success');
+        }
     };
 
     window.addGiftText = function () {
