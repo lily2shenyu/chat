@@ -14,6 +14,7 @@ import android.webkit.ValueCallback;
 import android.net.Uri;
 import android.content.Intent;
 import android.content.ActivityNotFoundException;
+import android.app.PendingIntent;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -155,22 +156,27 @@ public class MainActivity extends Activity {
         }
     }
 
-    private class Bridge {
-        @android.webkit.JavascriptInterface
-        public void notify(String title, String body) {
-            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm == null) return;
-            Notification.Builder builder = Build.VERSION.SDK_INT >= 26
-                ? new Notification.Builder(MainActivity.this, "love_messages")
-                : new Notification.Builder(MainActivity.this);
-            builder.setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle(title == null || title.isEmpty() ? "LOVE" : title)
-                .setContentText(body == null ? "收到一条新消息" : body)
-                .setAutoCancel(true)
-                .setPriority(Notification.PRIORITY_HIGH);
-            try { nm.notify((int) System.currentTimeMillis(), builder.build()); } catch (Exception e) {}
+        private class Bridge {
+            @android.webkit.JavascriptInterface
+            public void notify(String title, String body) {
+                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm == null) return;
+                Intent intent = new Intent(MainActivity.this, MainActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                PendingIntent pi = PendingIntent.getActivity(MainActivity.this, 0, intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                Notification.Builder builder = Build.VERSION.SDK_INT >= 26
+                    ? new Notification.Builder(MainActivity.this, "love_messages")
+                    : new Notification.Builder(MainActivity.this);
+                builder.setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setContentTitle(title == null || title.isEmpty() ? "LOVE" : title)
+                    .setContentText(body == null ? "收到一条新消息" : body)
+                    .setAutoCancel(true)
+                    .setPriority(Notification.PRIORITY_HIGH)
+                    .setContentIntent(pi);
+                try { nm.notify((int) System.currentTimeMillis(), builder.build()); } catch (Exception e) {}
+            }
         }
-    }
 
     @Override
     public void onBackPressed() {
