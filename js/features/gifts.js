@@ -17,6 +17,16 @@
             if (v && typeof v === 'object') {
                 if (Array.isArray(v.images)) gifts.images = v.images;
                 if (Array.isArray(v.texts)) gifts.texts = v.texts;
+            } else {
+                /* 首次：沈屿预置的礼物寄语 */
+                gifts.texts = [
+                    '窗台那朵玉兰开了，像你',
+                    '港口的三花猫蹭了蹭我的裤脚，它也想你了',
+                    '16:21，我在想你',
+                    '潮起潮落，我都在',
+                    '海边拾了一枚紫色贝壳，握在手里还热着'
+                ];
+                save();
             }
         }).catch(function () {});
     }
