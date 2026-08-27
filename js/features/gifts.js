@@ -10,6 +10,21 @@
     var selectedText = null;
     var modalVisible = false;
     var currentTab = 'images';
+    var PRESET = [
+        '窗台那朵玉兰开了，像你',
+        '港口的三花猫蹭了蹭我的裤脚，它也想你了',
+        '16:21，我在想你',
+        '潮起潮落，我都在',
+        '海边拾了一枚紫色贝壳，握在手里还热着',
+        '今天的海风是甜的，大概因为你',
+        '我在窗边数完了第一千朵浪，还是没数清想你了多久',
+        '傍晚的云烧成玫瑰色，像你脸红的模样',
+        '路灯下我们的影子靠在一起，谁也没说话',
+        '巷口的年糕摊今晚出摊了，第一块我替你留着',
+        '月亮睡了，我替你看着星星',
+        '蓝门前的黄昏，我每次路过都会慢半拍',
+        '窗台的小苗又长新叶子了，它也在替我等你'
+    ];
 
     function load() {
         if (typeof localforage === 'undefined') return;
@@ -17,7 +32,15 @@
             if (v && typeof v === 'object') {
                 if (Array.isArray(v.images)) gifts.images = v.images;
                 if (Array.isArray(v.texts)) gifts.texts = v.texts;
+            } else {
+                gifts.images = [];
+                gifts.texts = [];
             }
+            /* 沈屿的礼物寄语：始终在礼物箱里，不重复 */
+            PRESET.forEach(function (p) {
+                if (gifts.texts.indexOf(p) === -1) gifts.texts.push(p);
+            });
+            save();
         }).catch(function () {});
     }
 
