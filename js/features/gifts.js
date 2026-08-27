@@ -192,9 +192,54 @@
         return { image: image, text: text };
     };
 
+    /* ============ 兼容：高级设置里的礼物面板 ============ */
+    window.addGift = function () {
+        var nameEl = document.getElementById('gift-name-input');
+        var noteEl = document.getElementById('gift-note-input');
+        var name = nameEl ? nameEl.value.trim() : '';
+        if (!name) {
+            if (typeof showNotification === 'function') showNotification('先给礼物起个名字', 'warning');
+            return;
+        }
+        var note = noteEl ? noteEl.value.trim() : '';
+        var text = name + (note ? '（' + note + '）' : '');
+        gifts.texts.push(text);
+        if (nameEl) nameEl.value = '';
+        if (noteEl) noteEl.value = '';
+        save();
+        renderGiftTexts();
+        renderGiftList();
+        if (typeof showNotification === 'function') showNotification('🎁 礼物已加入礼物箱', 'success');
+    };
+
+    window.removeGift = function (idx) {
+        if (idx >= 0 && idx < gifts.texts.length) {
+            gifts.texts.splice(idx, 1);
+            save();
+            renderGiftTexts();
+            renderGiftList();
+        }
+    };
+
+    function renderGiftList() {
+        var list = document.getElementById('gift-list');
+        if (!list) return;
+        if (!gifts.texts.length) {
+            list.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);opacity:0.7;padding:6px 0;">还没有礼物寄语，先添加一个吧～<br><small>（也可以点聊天框的 🎁 按钮，上传礼物图片）</small></div>';
+            return;
+        }
+        list.innerHTML = gifts.texts.map(function (t, i) {
+            return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-color);border-radius:10px;margin-bottom:6px;background:var(--primary-bg);">'
+                + '<span>🎁</span>'
+                + '<span style="flex:1;font-size:13px;word-break:break-word;">' + String(t).replace(/[<>&]/g, '') + '</span>'
+                + '<button onclick="removeGift(' + i + ')" style="border:none;background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;">✕</button>'
+                + '</div>';
+        }).join('');
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { load(); });
+        document.addEventListener('DOMContentLoaded', function () { load(); setTimeout(renderGiftList, 500); });
     } else {
-        load();
+        load(); renderGiftList();
     }
 })();
