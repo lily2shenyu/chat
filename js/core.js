@@ -970,7 +970,7 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
 
     if (msg.type === 'gift') {
         const giftDiv = document.createElement('div');
-        giftDiv.className = 'gift-message ' + (msg.sender === 'user' ? 'gift-right' : 'gift-left');
+        giftDiv.className = 'gift-message ' + (msg.sender === settings.myName ? 'gift-right' : 'gift-left');
         giftDiv.dataset.id = msg.id;
         const imgHtml = msg.image ? `<img class="gift-card-img" src="${msg.image}" alt="礼物">` : '';
         const noteHtml = msg.text ? `<div class="gift-card-note">${msg.text.replace(/[<>&]/g, '')}</div>` : '';
