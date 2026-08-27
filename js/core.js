@@ -1740,6 +1740,28 @@ const puzzleCount = settings.puzzleCards ? (1 + Math.floor(Math.random() * Math.
                     }
                     playSound('message');
 
+                    if (typeof window.__maybeSendGift === 'function') {
+                        const giftText = window.__maybeSendGift();
+                        if (giftText) {
+                            setTimeout(() => {
+                                addMessage({
+                                    id: Date.now() + i + 3000,
+                                    sender: settings.partnerName || '对方',
+                                    text: giftText,
+                                    timestamp: new Date(),
+                                    status: 'received',
+                                    favorited: false,
+                                    note: null,
+                                    type: 'normal'
+                                });
+                                playSound('message');
+                                if (typeof window._sendPartnerNotification === 'function') {
+                                    window._sendPartnerNotification(settings.partnerName || '对方', '🎁 送你一件礼物');
+                                }
+                            }, 500 + Math.random() * 800);
+                        }
+                    }
+
                     if (shouldSendSticker) {
                         const randomSticker = enabledStickerPool[Math.floor(Math.random() * enabledStickerPool.length)];
                         setTimeout(() => {
