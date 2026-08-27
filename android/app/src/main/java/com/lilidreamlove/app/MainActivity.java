@@ -48,6 +48,7 @@ public class MainActivity extends Activity {
         setContentView(webView);
 
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
 
         final View content = findViewById(android.R.id.content);
         content.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
