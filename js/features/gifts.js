@@ -229,13 +229,42 @@
         if (typeof showNotification === 'function') showNotification('💝 礼物已送出', 'success');
     };
 
-    /* ============ 自动送礼（对方随机送出） ============ */
-    window.__maybeSendGift = function () {
-        if (!gifts.images.length) return null;
+    /* ============ 送礼：完全独立随机，心血来潮 ============ */
+    function maybeAutoSendGift() {
+        if (typeof addMessage !== 'function') return;
+        if (!gifts.images.length) return;
         var image = gifts.images[Math.floor(Math.random() * gifts.images.length)];
         var text = gifts.texts.length ? gifts.texts[Math.floor(Math.random() * gifts.texts.length)] : '';
-        return { image: image, text: text };
-    };
+        addMessage({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            sender: settings.partnerName || '对方',
+            text: text || '',
+            image: image || '',
+            giftName: '礼物',
+            timestamp: new Date(),
+            status: 'received',
+            favorited: false,
+            note: null,
+            type: 'gift'
+        });
+        playSound('message');
+        throttledSaveData();
+        if (typeof window._sendPartnerNotification === 'function') {
+            window._sendPartnerNotification(settings.partnerName || '对方', '💝 送你一件礼物');
+        }
+    }
+
+    function scheduleNextGift() {
+        /* 完全随机间隔：15 分钟 ~ 90 分钟之间，全凭心血来潮 */
+        var delay = (15 + Math.random() * 75) * 60 * 1000;
+        setTimeout(function () {
+            maybeAutoSendGift();
+            scheduleNextGift();
+        }, delay);
+    }
+
+    /* 兼容旧调用（不再被聊天回复触发） */
+    window.__maybeSendGift = function () { return null; };
 
     /* ============ 兼容：高级设置里的礼物面板 ============ */
     window.addGift = function () {
@@ -283,8 +312,8 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { load(); setTimeout(renderGiftList, 500); });
+        document.addEventListener('DOMContentLoaded', function () { load(); setTimeout(renderGiftList, 500); setTimeout(scheduleNextGift, 30000); });
     } else {
-        load(); renderGiftList();
+        load(); renderGiftList(); setTimeout(scheduleNextGift, 30000);
     }
 })();
