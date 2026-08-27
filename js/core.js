@@ -1766,30 +1766,6 @@ const puzzleCount = settings.puzzleCards ? (1 + Math.floor(Math.random() * Math.
                     }
                     playSound('message');
 
-                    if (typeof window.__maybeSendGift === 'function') {
-                        const giftObj = window.__maybeSendGift();
-                        if (giftObj) {
-                            setTimeout(() => {
-                                addMessage({
-                                    id: Date.now() + i + 3000,
-                                    sender: settings.partnerName || '对方',
-                                    text: giftObj.text || '',
-                                    image: giftObj.image || '',
-                                    giftName: '礼物',
-                                    timestamp: new Date(),
-                                    status: 'received',
-                                    favorited: false,
-                                    note: null,
-                                    type: 'gift'
-                                });
-                                playSound('message');
-                                if (typeof window._sendPartnerNotification === 'function') {
-                                    window._sendPartnerNotification(settings.partnerName || '对方', '💝 送你一件礼物');
-                                }
-                            }, 500 + Math.random() * 800);
-                        }
-                    }
-
                     if (shouldSendSticker) {
                         const randomSticker = enabledStickerPool[Math.floor(Math.random() * enabledStickerPool.length)];
                         setTimeout(() => {
