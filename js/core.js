@@ -972,10 +972,23 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
         const giftDiv = document.createElement('div');
         giftDiv.className = 'gift-message ' + (msg.sender === settings.myName ? 'gift-right' : 'gift-left');
         giftDiv.dataset.id = msg.id;
+        const senderName = String(msg.sender || '对方').replace(/[<>&]/g, '');
+        const hint = document.createElement('div');
+        hint.className = 'gift-hint';
+        hint.innerHTML = '🎁 ' + senderName + ' 送了你一件礼物';
+        hint.onclick = function () {
+            const card = giftDiv.querySelector('.gift-card-wrap');
+            if (card) card.style.display = (card.style.display === 'none') ? 'block' : 'none';
+        };
+        const cardWrap = document.createElement('div');
+        cardWrap.className = 'gift-card-wrap';
+        cardWrap.style.display = 'none';
         const imgHtml = msg.image ? `<img class="gift-card-img" src="${msg.image}" alt="礼物">` : '';
         const noteHtml = msg.text ? `<div class="gift-card-note">${msg.text.replace(/[<>&]/g, '')}</div>` : '';
         const nameHtml = msg.giftName ? `<div class="gift-card-name">${String(msg.giftName).replace(/[<>&]/g, '')}</div>` : '';
-        giftDiv.innerHTML = `<div class="gift-card">${imgHtml}<div class="gift-card-body">${nameHtml}${noteHtml}</div></div>`;
+        cardWrap.innerHTML = `<div class="gift-card">${imgHtml}<div class="gift-card-body">${nameHtml}${noteHtml}</div></div>`;
+        giftDiv.appendChild(hint);
+        giftDiv.appendChild(cardWrap);
         fragment.appendChild(giftDiv);
         lastSenderRef.current = 'system';
         return fragment;
