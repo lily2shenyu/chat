@@ -968,6 +968,19 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
         return fragment;
     }
 
+    if (msg.type === 'gift') {
+        const giftDiv = document.createElement('div');
+        giftDiv.className = 'gift-message';
+        giftDiv.dataset.id = msg.id;
+        const imgHtml = msg.image ? `<img class="gift-card-img" src="${msg.image}" alt="礼物">` : '';
+        const noteHtml = msg.text ? `<div class="gift-card-note">${msg.text.replace(/[<>&]/g, '')}</div>` : '';
+        const nameHtml = msg.giftName ? `<div class="gift-card-name">${String(msg.giftName).replace(/[<>&]/g, '')}</div>` : '';
+        giftDiv.innerHTML = `<div class="gift-card"><div class="gift-card-bow">🎁</div>${imgHtml}<div class="gift-card-body">${nameHtml}${noteHtml}</div></div>`;
+        fragment.appendChild(giftDiv);
+        lastSenderRef.current = 'system';
+        return fragment;
+    }
+
     let showTimestamp = true;
     if (settings.timeFormat === 'off') {
         showTimestamp = false;
@@ -1741,22 +1754,24 @@ const puzzleCount = settings.puzzleCards ? (1 + Math.floor(Math.random() * Math.
                     playSound('message');
 
                     if (typeof window.__maybeSendGift === 'function') {
-                        const giftText = window.__maybeSendGift();
-                        if (giftText) {
+                        const giftObj = window.__maybeSendGift();
+                        if (giftObj) {
                             setTimeout(() => {
                                 addMessage({
                                     id: Date.now() + i + 3000,
                                     sender: settings.partnerName || '对方',
-                                    text: giftText,
+                                    text: giftObj.text || '',
+                                    image: giftObj.image || '',
+                                    giftName: '礼物',
                                     timestamp: new Date(),
                                     status: 'received',
                                     favorited: false,
                                     note: null,
-                                    type: 'normal'
+                                    type: 'gift'
                                 });
                                 playSound('message');
                                 if (typeof window._sendPartnerNotification === 'function') {
-                                    window._sendPartnerNotification(settings.partnerName || '对方', '🎁 送你一件礼物');
+                                    window._sendPartnerNotification(settings.partnerName || '对方', '💝 送你一件礼物');
                                 }
                             }, 500 + Math.random() * 800);
                         }
