@@ -970,12 +970,12 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
 
     if (msg.type === 'gift') {
         const giftDiv = document.createElement('div');
-        giftDiv.className = 'gift-message';
+        giftDiv.className = 'gift-message ' + (msg.sender === 'user' ? 'gift-right' : 'gift-left');
         giftDiv.dataset.id = msg.id;
         const imgHtml = msg.image ? `<img class="gift-card-img" src="${msg.image}" alt="礼物">` : '';
         const noteHtml = msg.text ? `<div class="gift-card-note">${msg.text.replace(/[<>&]/g, '')}</div>` : '';
         const nameHtml = msg.giftName ? `<div class="gift-card-name">${String(msg.giftName).replace(/[<>&]/g, '')}</div>` : '';
-        giftDiv.innerHTML = `<div class="gift-card"><div class="gift-card-bow">🎁</div>${imgHtml}<div class="gift-card-body">${nameHtml}${noteHtml}</div></div>`;
+        giftDiv.innerHTML = `<div class="gift-card">${imgHtml}<div class="gift-card-body">${nameHtml}${noteHtml}</div></div>`;
         fragment.appendChild(giftDiv);
         lastSenderRef.current = 'system';
         return fragment;
