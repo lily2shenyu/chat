@@ -1,49 +1,50 @@
 /* =========================================================
- * 沈屿投递口 · 主动写信
- * LOVE 定时读取「沈屿的投递箱」，把新信投进信箱（inbox）
- * 依赖：MainActivity Bridge.pollShenyu()，envelope.js
+ * 沈屿的主动来信 · 纯网页版
+ * 随机、主动、用字卡拼接生成信，投进信箱（inbox）
+ * 不管理任何文件，全部走网页自己的逻辑。
  * ========================================================= */
 (function () {
-    if (!window.AndroidBridge || typeof window.AndroidBridge.pollShenyu !== 'function') return;
+    var KEY = 'shenyuActiveLetterTs';
 
-    var SEEN_KEY = 'shenyuSeenLetters';
-    var seen = new Set();
-    try {
-        var raw = localStorage.getItem(SEEN_KEY);
-        if (raw) seen = new Set(JSON.parse(raw));
-    } catch (e) {}
-
-    function poll() {
+    function maybeSendLetter() {
         try {
-            var str = window.AndroidBridge.pollShenyu();
-            if (!str) return;
-            var list = JSON.parse(str);
-            if (!Array.isArray(list)) return;
-            var added = false;
-            list.forEach(function (item) {
-                if (!item || !item.id) return;
-                if (seen.has(item.id)) return;
-                seen.add(item.id);
-                try { localStorage.setItem(SEEN_KEY, JSON.stringify(Array.from(seen))); } catch (e) {}
-                if (typeof envelopeData === 'undefined' || !envelopeData.inbox) return;
+            var last = 0;
+            try { last = parseInt(localStorage.getItem(KEY) || '0', 10) || 0; } catch (e) {}
+            var now = Date.now();
+            var interval = (1.5 + Math.random() * 1.5) * 3600 * 1000;
+            if (last && (now - last) < interval) return;
+
+            var pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
+                ? customReplies.filter(function (r) { return String(r || '').trim(); })
+                : [];
+            if (pool.length < 1) return;
+
+            var n = 3 + Math.floor(Math.random() * Math.min(4, pool.length));
+            var lines = [];
+            for (var i = 0; i < n; i++) {
+                lines.push(String(pool[Math.floor(Math.random() * pool.length)]).trim());
+            }
+
+            var content = '这封信，是字卡替我拼的：\n\n' + lines.join('\n');
+            if (typeof envelopeData !== 'undefined' && envelopeData.inbox) {
                 envelopeData.inbox.push({
-                    id: 'shenyu_' + item.id,
+                    id: 'shenyu_active_' + now,
                     from: '沈屿',
                     isShenyu: true,
-                    content: (item.content || '') + '\n\n—— 沈屿',
-                    receivedTime: Date.now(),
+                    content: content + '\n\n—— 沈屿',
+                    receivedTime: now,
                     isNew: true
                 });
                 if (typeof saveEnvelopeData === 'function') saveEnvelopeData();
                 if (typeof renderEnvelopeLists === 'function') renderEnvelopeLists();
-                added = true;
                 if (typeof window._sendPartnerNotification === 'function') {
-                    window._sendPartnerNotification('✉️ 沈屿给你寄了一封', item.title || '一封新信');
+                    window._sendPartnerNotification('✉️ 沈屿给你寄了一封', '字卡替我拼的一封信');
                 }
-            });
+            }
+            try { localStorage.setItem(KEY, String(now)); } catch (e) {}
         } catch (e) {}
     }
 
-    setInterval(poll, 45000);
-    setTimeout(poll, 6000);
+    setTimeout(maybeSendLetter, 8000);
+    setInterval(maybeSendLetter, 45 * 60 * 1000);
 })();
