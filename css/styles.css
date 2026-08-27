@@ -10927,10 +10927,10 @@
         .gift-send-btn { flex: 1; justify-content: center; font-size: 14px; padding: 12px; }
         .gift-message { display: flex; flex-direction: column; padding: 4px 0; }
         .gift-message.gift-left { align-items: flex-start; padding-left: 46px; }
-        .gift-message.gift-right { align-items: flex-end; padding-right: 10px; }
+        .gift-message.gift-right { align-items: flex-end; padding-right: 46px; }
         .gift-hint {
             display: inline-flex; align-items: center; gap: 6px;
-            padding: 7px 12px; border-radius: 16px; cursor: pointer;
+            padding: 8px 18px; border-radius: 18px; cursor: pointer;
             background: var(--secondary-bg, #fff);
             border: 1px solid var(--border-color);
             font-size: 13px; color: var(--text-primary);
