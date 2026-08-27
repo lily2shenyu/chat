@@ -144,6 +144,7 @@ function loadMoreHistory() {
                 isDarkMode: false,
                 colorTheme: "gold",
                 soundEnabled: true,
+                puzzleCards: false,
                 typingIndicatorEnabled: true,
                 readReceiptsEnabled: true,
                 replyEnabled: true,
@@ -866,7 +867,8 @@ function manageAutoSendTimer() {
                 '#typing-indicator-toggle': 'typingIndicatorEnabled',
                 '#read-no-reply-toggle': 'allowReadNoReply',
                 '#emoji-mix-toggle': 'emojiMixEnabled',
-                '#auto-send-toggle': 'autoSendEnabled'
+                '#auto-send-toggle': 'autoSendEnabled',
+                '#puzzle-toggle': 'puzzleCards'
             };
             for (const [sel, prop] of Object.entries(_pillSyncMap)) {
                 const el = document.querySelector(sel);
@@ -1639,7 +1641,8 @@ if (partnerPersonas && partnerPersonas.length > 0 && Math.random() < 0.3) {
                 return;
             }
 
-            const replyCount = Math.random() < 0.75 ? 1: (Math.random() < 0.95 ? 2: 3);
+const puzzleCount = settings.puzzleCards ? (1 + Math.floor(Math.random() * Math.min(5, (customReplies || []).length))) : 1;
+            const replyCount = settings.puzzleCards ? 1 : (Math.random() < 0.75 ? 1 : (Math.random() < 0.95 ? 2 : 3));
             if (!customReplies || customReplies.length === 0) {
                 showNotification('回复库为空，请先到「自定义回复」中添加内容', 'info', 3500);
                 return;
@@ -1698,6 +1701,15 @@ if (partnerPersonas && partnerPersonas.length > 0 && Math.random() < 0.3) {
                     const shouldSendSticker = enabledStickerPool.length > 0 && Math.random() < 0.2;
 
                     let finalText = replyText;
+                    if (settings.puzzleCards && puzzleCount > 1) {
+                        const parts = [];
+                        for (let p = 0; p < puzzleCount; p++) {
+                            if (replyPool && replyPool.length) {
+                                parts.push(replyPool[Math.floor(Math.random() * replyPool.length)]);
+                            }
+                        }
+                        if (parts.length > 0) finalText = parts.join('、');
+                    }
                     let separateEmoji = null;
                     if (customEmojis && customEmojis.length > 0 && Math.random() < 0.2) {
                         const emoji = customEmojis[Math.floor(Math.random() * customEmojis.length)];
