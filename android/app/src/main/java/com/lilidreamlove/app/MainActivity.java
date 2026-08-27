@@ -21,6 +21,8 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Environment;
+import android.provider.Settings;
 import android.graphics.Rect;
 import android.view.ViewTreeObserver;
 
@@ -37,6 +39,15 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         createNotificationChannel();
+        if (Build.VERSION.SDK_INT >= 30 && !Environment.isExternalStorageManager()) {
+            try {
+                Intent permIntent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                permIntent.setData(Uri.parse("package:" + getPackageName()));
+                startActivity(permIntent);
+            } catch (Exception e) {
+                try { startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)); } catch (Exception e2) {}
+            }
+        }
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 200);
         }
@@ -175,6 +186,36 @@ public class MainActivity extends Activity {
                     .setPriority(Notification.PRIORITY_HIGH)
                     .setContentIntent(pi);
                 try { nm.notify((int) System.currentTimeMillis(), builder.build()); } catch (Exception e) {}
+            }
+
+            @android.webkit.JavascriptInterface
+            public String pollShenyu() {
+                try {
+                    java.io.File dir = new java.io.File("/storage/emulated/0/Download/lilidreamlove/inbox");
+                    if (!dir.exists() || !dir.isDirectory()) return "[]";
+                    java.io.File[] files = dir.listFiles(new java.io.FilenameFilter() {
+                        public boolean accept(java.io.File d, String n) { return n.endsWith(".json"); }
+                    });
+                    if (files == null) return "[]";
+                    StringBuilder sb = new StringBuilder("[");
+                    boolean first = true;
+                    for (java.io.File f : files) {
+                        try {
+                            java.io.FileInputStream fis = new java.io.FileInputStream(f);
+                            byte[] buf = new byte[(int) f.length()];
+                            int off = 0;
+                            while (off < buf.length) { int r = fis.read(buf, off, buf.length - off); if (r < 0) break; off += r; }
+                            fis.close();
+                            String content = new String(buf, "UTF-8").trim();
+                            if (content.isEmpty()) continue;
+                            if (!first) sb.append(",");
+                            sb.append(content);
+                            first = false;
+                        } catch (Exception e) {}
+                    }
+                    sb.append("]");
+                    return sb.toString();
+                } catch (Exception e) { return "[]"; }
             }
         }
 
