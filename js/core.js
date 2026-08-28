@@ -975,7 +975,7 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
         const senderName = String(msg.sender || '对方').replace(/[<>&]/g, '');
         const hint = document.createElement('div');
         hint.className = 'gift-hint';
-        hint.innerHTML = '💓 ' + senderName + ' 送了你一件礼物';
+        hint.innerHTML = '<span class="gift-heart">💓</span> ' + senderName + ' 送了你一件礼物';
         hint.onclick = function () {
             const card = giftDiv.querySelector('.gift-card-wrap');
             if (card) card.style.display = (card.style.display === 'none') ? 'block' : 'none';
