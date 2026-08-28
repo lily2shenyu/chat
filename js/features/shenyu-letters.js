@@ -25,7 +25,7 @@
                 lines.push(String(pool[Math.floor(Math.random() * pool.length)]).trim());
             }
 
-            var content = '栗栗：\n\n' + lines.join('\n');
+            var content = lines.join('\n');
             if (typeof envelopeData !== 'undefined' && envelopeData.inbox) {
                 envelopeData.inbox.push({
                     id: 'shenyu_active_' + now,
