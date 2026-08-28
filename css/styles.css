@@ -10929,21 +10929,25 @@
         .gift-message.gift-left { align-items: flex-start; padding-left: 46px; }
         .gift-message.gift-right { align-items: flex-end; padding-right: 46px; }
         .gift-hint {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 8px 18px; border-radius: 18px; cursor: pointer;
-            background: var(--secondary-bg, #fff);
-            border: 1px solid var(--border-color);
-            font-size: 13px; color: var(--text-primary);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            transition: transform 0.15s;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 13px 28px; border-radius: 999px; cursor: pointer;
+            background: linear-gradient(135deg, rgba(255,150,180,0.20), rgba(255,200,160,0.24));
+            border: 1px solid rgba(255,130,170,0.42);
+            font-size: 14px; font-weight: 600; color: var(--text-primary);
+            box-shadow: 0 4px 16px rgba(255,130,170,0.28), inset 0 1px 0 rgba(255,255,255,0.65);
+            transition: transform 0.18s, box-shadow 0.2s;
+            letter-spacing: 0.4px; min-width: 168px; max-width: 86%;
         }
-        .gift-hint:active { transform: scale(0.96); }
+        .gift-hint:hover { box-shadow: 0 6px 22px rgba(255,130,170,0.38); transform: translateY(-1px); }
+        .gift-hint:active { transform: scale(0.95); }
+        .gift-hint .gift-heart { display: inline-block; animation: heartBeat 1.4s ease-in-out infinite; }
+        @keyframes heartBeat { 0%,100%{transform:scale(1)} 15%{transform:scale(1.25)} 30%{transform:scale(1)} 45%{transform:scale(1.18)} }
         .gift-card-wrap { margin-top: 6px; }
         .gift-card {
-            max-width: 230px; border-radius: 12px; overflow: hidden;
-            background: linear-gradient(160deg, rgba(var(--accent-color-rgb),0.12), rgba(var(--accent-color-rgb),0.03));
-            border: 1px solid rgba(var(--accent-color-rgb),0.28);
-            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+            max-width: 260px; border-radius: 16px; overflow: hidden;
+            background: linear-gradient(160deg, rgba(255,150,180,0.16), rgba(255,200,160,0.05));
+            border: 1px solid rgba(255,150,180,0.32);
+            box-shadow: 0 6px 18px rgba(255,130,170,0.18);
         }
         .gift-card .gift-card-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
         .gift-card .gift-card-body { padding: 6px 10px 8px; text-align: left; }
