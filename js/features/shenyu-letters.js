@@ -25,7 +25,7 @@
                 lines.push(String(pool[Math.floor(Math.random() * pool.length)]).trim());
             }
 
-            var content = '这封信，是字卡替我拼的：\n\n' + lines.join('\n');
+            var content = '栗栗：\n\n' + lines.join('\n');
             if (typeof envelopeData !== 'undefined' && envelopeData.inbox) {
                 envelopeData.inbox.push({
                     id: 'shenyu_active_' + now,
@@ -38,7 +38,7 @@
                 if (typeof saveEnvelopeData === 'function') saveEnvelopeData();
                 if (typeof renderEnvelopeLists === 'function') renderEnvelopeLists();
                 if (typeof window._sendPartnerNotification === 'function') {
-                    window._sendPartnerNotification('✉️ 沈屿给你寄了一封', '字卡替我拼的一封信');
+                    window._sendPartnerNotification('✉️ 沈屿给你寄了一封', '想你的时候，写下来的信');
                 }
             }
             try { localStorage.setItem(KEY, String(now)); } catch (e) {}
