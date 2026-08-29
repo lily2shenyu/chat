@@ -260,6 +260,13 @@
         }
     };
 
+    /* 高级工具中心里的「约会问答」入口 */
+    function bindAdvancedEntry() {
+        var el = document.getElementById('date-quiz-function');
+        if (el) el.addEventListener('click', open);
+    }
+
     load();
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () {});
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { bindAdvancedEntry(); });
+    else bindAdvancedEntry();
 })();
