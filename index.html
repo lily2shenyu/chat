@@ -1192,13 +1192,12 @@
                 </div>
 
                 <div class="cs-panel" id="cs-panel-advanced">
-                    <p class="cs-group-label">礼物箱</p>
+                    <p class="cs-group-label">高级功能</p>
                     <div class="cs-card" style="padding:12px;">
-                        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6;">🎁 礼物会像字卡一样出现在聊天里，由对方随机送出。<br>在这里添加礼物（名字 + 一句想说的话）。</div>
-                        <input id="gift-name-input" placeholder="礼物名字，如：海边拾的紫色贝壳" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;outline:none;margin-bottom:8px;">
-                        <input id="gift-note-input" placeholder="想说的话（可留空）" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;outline:none;margin-bottom:10px;">
-                        <button onclick="addGift()" style="width:100%;padding:10px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:13px;cursor:pointer;">🎁 添加礼物</button>
-                        <div id="gift-list" style="margin-top:12px;"></div>
+                        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">💘 约会问答</div>
+                        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6;">我在聊天里说"想约会"时，你的问卷会来问我。<br>你可以自己出题、加选项、加美食图片。</div>
+                        <button onclick="openDateQuiz()" style="width:100%;padding:10px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:13px;cursor:pointer;margin-bottom:8px;">💘 打开约会问答</button>
+                        <button onclick="openEnvelopeQuick()" style="width:100%;padding:10px;border:1px solid var(--accent-color);border-radius:10px;background:transparent;color:var(--accent-color);font-size:13px;cursor:pointer;">✉️ 信封投递</button>
                     </div>
                 </div>
 
@@ -2244,6 +2243,7 @@
     <script src="js/features/mood.js"></script>
     <script src="js/features/envelope.js"></script>
     <script src="js/features/shenyu-letters.js"></script>
+    <script src="js/features/date-quiz.js"></script>
     <!-- ============ 礼物模态框 ============ -->
 <div class="gift-modal-overlay" id="giftModalOverlay" onclick="closeGiftModal()">
     <div class="gift-modal-panel" onclick="event.stopPropagation()">
