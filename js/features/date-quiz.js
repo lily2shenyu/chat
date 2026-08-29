@@ -1,0 +1,265 @@
+/* =========================================================
+ * 约会问答 · date-quiz
+ * 触发：聊天里出现「我想约会」→ 问卷来问沈屿
+ * 她管理题目（选择/填空）+ 美食图片；沈屿作答；生成约会安排卡
+ * ========================================================= */
+(function () {
+    var KEY = 'lilidreamlove_datequiz';
+    var dq = { questions: [], images: [] };
+    var answers = {};
+
+    function load() {
+        if (typeof localforage === 'undefined') return;
+        localforage.getItem(KEY).then(function (v) {
+            if (v && typeof v === 'object') {
+                if (Array.isArray(v.questions)) dq.questions = v.questions;
+                if (Array.isArray(v.images)) dq.images = v.images;
+            }
+        }).catch(function () {});
+    }
+    function save() {
+        if (typeof localforage !== 'undefined') localforage.setItem(KEY, dq).catch(function () {});
+    }
+
+    /* ============ 模态框 ============ */
+    var modalEl = null;
+
+    function ensureModal() {
+        if (modalEl && document.body.contains(modalEl)) return modalEl;
+        var d = document.createElement('div');
+        d.id = 'date-quiz-modal';
+        d.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center;';
+        d.innerHTML =
+            '<div style="width:100%;max-width:560px;max-height:86vh;background:var(--secondary-bg,#fff);border-radius:20px 20px 0 0;display:flex;flex-direction:column;overflow:hidden;color:var(--text-primary);">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border-color);">' +
+            '<span style="font-size:16px;font-weight:700;">💘 约会问答</span>' +
+            '<button id="dq-close" style="background:none;border:none;color:var(--text-secondary);font-size:16px;cursor:pointer;">✕</button></div>' +
+            '<div style="display:flex;border-bottom:1px solid var(--border-color);">' +
+            '<div class="dq-tab" data-tab="manage" style="flex:1;text-align:center;padding:10px 0;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-primary);border-bottom:3px solid var(--accent-color);">管理题目</div>' +
+            '<div class="dq-tab" data-tab="quiz" style="flex:1;text-align:center;padding:10px 0;cursor:pointer;font-size:13px;color:var(--text-secondary);">问答</div>' +
+            '<div class="dq-tab" data-tab="plans" style="flex:1;text-align:center;padding:10px 0;cursor:pointer;font-size:13px;color:var(--text-secondary);">安排卡</div>' +
+            '</div>' +
+            '<div id="dq-body" style="flex:1;overflow-y:auto;padding:12px 14px 20px;"></div>' +
+            '</div>';
+        d.addEventListener('click', function (e) { if (e.target === d) close(); });
+        document.body.appendChild(d);
+        modalEl = d;
+        d.querySelectorAll('.dq-tab').forEach(function (t) {
+            t.addEventListener('click', function () { switchTab(t.dataset.tab); });
+        });
+        d.querySelector('#dq-close').addEventListener('click', close);
+        return d;
+    }
+    function open() { var d = ensureModal(); d.style.display = 'flex'; switchTab('manage'); renderAll(); }
+    function close() { var d = modalEl; if (d) d.style.display = 'none'; }
+    window.openDateQuiz = open;
+
+    function switchTab(tab) {
+        ensureModal();
+        modalEl.querySelectorAll('.dq-tab').forEach(function (t) {
+            var on = t.dataset.tab === tab;
+            t.style.color = on ? 'var(--text-primary)' : 'var(--text-secondary)';
+            t.style.fontWeight = on ? '600' : '400';
+            t.style.borderBottom = on ? '3px solid var(--accent-color)' : '3px solid transparent';
+        });
+        if (tab === 'manage') renderManage();
+        else if (tab === 'quiz') renderQuiz();
+        else renderPlans();
+    }
+
+    /* ============ 管理题目 ============ */
+    function renderManage() {
+        var body = modalEl.querySelector('#dq-body');
+        var h = '';
+        h += '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">➕ 添加选择题</div>';
+        h += '<input id="dq-q" placeholder="题目，如：你想去哪里？" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;outline:none;margin-bottom:6px;">';
+        h += '<input id="dq-opts" placeholder="选项，用顿号分隔：海边、蓝门、小镇、电影院" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;outline:none;margin-bottom:6px;">';
+        h += '<button id="dq-add-choice" style="width:100%;padding:9px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:13px;cursor:pointer;margin-bottom:14px;">添加选择题</button>';
+        h += '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">✏️ 添加填空题</div>';
+        h += '<input id="dq-textq" placeholder="题目，如：想吃什么？" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;outline:none;margin-bottom:6px;">';
+        h += '<button id="dq-add-text" style="width:100%;padding:9px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:13px;cursor:pointer;margin-bottom:14px;">添加填空题</button>';
+        h += '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🍽️ 美食图片</div>';
+        h += '<button id="dq-add-img" style="width:100%;padding:9px;border:1px solid var(--accent-color);border-radius:10px;background:transparent;color:var(--accent-color);font-size:13px;cursor:pointer;margin-bottom:6px;">➕ 添加图片（食物）</button>';
+        h += '<div id="dq-img-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>';
+        h += '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">📋 已有题目（' + dq.questions.length + '）</div>';
+        h += '<div id="dq-q-list"></div>';
+        body.innerHTML = h;
+        body.querySelector('#dq-add-choice').addEventListener('click', function () {
+            var q = body.querySelector('#dq-q').value.trim();
+            var opts = body.querySelector('#dq-opts').value.split(/[、,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
+            if (!q || !opts.length) { toast('题目和选项都要填'); return; }
+            dq.questions.push({ type: 'choice', q: q, opts: opts });
+            save(); renderManage();
+        });
+        body.querySelector('#dq-add-text').addEventListener('click', function () {
+            var q = body.querySelector('#dq-textq').value.trim();
+            if (!q) { toast('题目不能为空'); return; }
+            dq.questions.push({ type: 'text', q: q });
+            save(); renderManage();
+        });
+        body.querySelector('#dq-add-img').addEventListener('click', function () {
+            var inp = document.createElement('input');
+            inp.type = 'file'; inp.accept = 'image/*';
+            inp.onchange = function (e) {
+                var f = e.target.files[0]; if (!f) return;
+                if (f.size > 2 * 1024 * 1024) { toast('图片别超过2MB'); return; }
+                var r = new FileReader();
+                r.onload = function (ev) { dq.images.push(ev.target.result); save(); renderManage(); };
+                r.readAsDataURL(f);
+            };
+            inp.click();
+        });
+        renderImgList(body);
+        renderQList(body);
+    }
+    function renderImgList(body) {
+        var list = body.querySelector('#dq-img-list');
+        list.innerHTML = dq.images.map(function (img, i) {
+            return '<div style="position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;">' +
+                '<img src="' + img + '" style="width:100%;height:100%;object-fit:cover;">' +
+                '<span onclick="window.__dqDelImg(' + i + ')" style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,0.55);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;">✕</span></div>';
+        }).join('') || '<span style="font-size:11px;color:var(--text-secondary);opacity:0.7;">还没有美食图，加一张想吃的吧～</span>';
+    }
+    window.__dqDelImg = function (i) {
+        if (i >= 0 && i < dq.images.length) { dq.images.splice(i, 1); save(); renderManage(); }
+    };
+    function renderQList(body) {
+        var list = body.querySelector('#dq-q-list');
+        if (!dq.questions.length) { list.innerHTML = '<span style="font-size:11px;color:var(--text-secondary);opacity:0.7;">还没有题目，先出几道吧～</span>'; return; }
+        list.innerHTML = dq.questions.map(function (q, i) {
+            var meta = q.type === 'choice' ? '（选择）' + q.opts.join('、') : '（填空）';
+            return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-color);border-radius:10px;margin-bottom:6px;background:var(--primary-bg);font-size:13px;">' +
+                '<span style="flex:1;word-break:break-word;">' + q.q.replace(/[<>&]/g, '') + '<br><small style="color:var(--text-secondary);">' + meta.replace(/[<>&]/g, '') + '</small></span>' +
+                '<span onclick="window.__dqDelQ(' + i + ')" style="cursor:pointer;color:var(--text-secondary);">✕</span></div>';
+        }).join('');
+    }
+    window.__dqDelQ = function (i) {
+        if (i >= 0 && i < dq.questions.length) { dq.questions.splice(i, 1); save(); renderManage(); }
+    };
+
+    /* ============ 问答 ============ */
+    function renderQuiz() {
+        var body = modalEl.querySelector('#dq-body');
+        if (!dq.questions.length) {
+            body.innerHTML = '<div style="text-align:center;padding:30px 0;color:var(--text-secondary);font-size:13px;">还没有题目。<br>去「管理题目」出几道题吧～</div>';
+            return;
+        }
+        answers = {};
+        var h = '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">👇 问卷来啦，每题都要答哦</div>';
+        h += dq.questions.map(function (q, i) {
+            if (q.type === 'choice') {
+                var opts = q.opts.map(function (o, j) {
+                    return '<button class="dq-opt" data-i="' + i + '" data-v="' + o.replace(/"/g, '"') + '" style="display:block;width:100%;text-align:left;padding:10px 12px;margin-bottom:6px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;cursor:pointer;">' + o.replace(/[<>&]/g, '') + '</button>';
+                }).join('');
+                return '<div style="font-size:14px;font-weight:600;margin:10px 0 6px;">' + (i + 1) + '. ' + q.q.replace(/[<>&]/g, '') + '</div>' + opts;
+            }
+            return '<div style="font-size:14px;font-weight:600;margin:10px 0 6px;">' + (i + 1) + '. ' + q.q.replace(/[<>&]/g, '') + '</div>' +
+                '<div style="display:flex;gap:8px;"><input class="dq-text" data-i="' + i + '" placeholder="从字卡里选，或自己写…" style="flex:1;padding:9px 12px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;outline:none;">' +
+                '<button class="dq-pickcard" data-i="' + i + '" style="padding:9px 12px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:12px;cursor:pointer;">字卡</button></div>';
+        }).join('');
+        h += '<button id="dq-submit" style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-top:14px;">💘 确认约会安排</button>';
+        body.innerHTML = h;
+        body.querySelectorAll('.dq-opt').forEach(function (b) {
+            b.addEventListener('click', function () {
+                answers[b.dataset.i] = b.dataset.v;
+                body.querySelectorAll('.dq-opt').forEach(function (x) { x.style.borderColor = 'var(--border-color)'; x.style.background = 'var(--primary-bg)'; });
+                b.style.borderColor = 'var(--accent-color)'; b.style.background = 'rgba(var(--accent-color-rgb),0.12)';
+            });
+        });
+        body.querySelectorAll('.dq-pickcard').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies)) ? customReplies : [];
+                if (!pool.length) { toast('字卡库是空的'); return; }
+                var card = pool[Math.floor(Math.random() * pool.length)];
+                var inp = body.querySelector('.dq-text[data-i="' + b.dataset.i + '"]');
+                if (inp) inp.value = String(card);
+                answers[b.dataset.i] = String(card);
+            });
+        });
+        body.querySelectorAll('.dq-text').forEach(function (inp) {
+            inp.addEventListener('input', function () { answers[inp.dataset.i] = inp.value; });
+        });
+        body.querySelector('#dq-submit').addEventListener('click', function () {
+            var done = 0;
+            dq.questions.forEach(function (q, i) {
+                if (q.type === 'choice') { if (answers[i]) done++; }
+                else { var v = (body.querySelector('.dq-text[data-i="' + i + '"]') || {}).value || ''; if (v.trim()) { answers[i] = v.trim(); done++; } }
+            });
+            if (done < dq.questions.length) { toast('还有题目没答完哦'); return; }
+            buildPlan();
+        });
+    }
+
+    /* ============ 安排卡 ============ */
+    function buildPlan() {
+        var lines = [];
+        var food = dq.images.length ? dq.images[Math.floor(Math.random() * dq.images.length)] : null;
+        dq.questions.forEach(function (q, i) {
+            lines.push(q.q + '：' + (answers[i] || '—'));
+        });
+        var summary = '💘 约会安排\n' + lines.join('\n');
+        var plan = { time: Date.now(), text: summary, image: food };
+
+        /* 聊天消息（date 类型，可折叠） */
+        if (typeof addMessage === 'function') {
+            addMessage({
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                sender: settings.partnerName || '对方',
+                text: summary,
+                image: food || '',
+                timestamp: new Date(),
+                status: 'received',
+                favorited: false,
+                note: null,
+                type: 'date'
+            });
+            playSound('message');
+            throttledSaveData();
+        }
+        /* 存最近安排 */
+        var plans = [];
+        try { plans = JSON.parse(localStorage.getItem('lilidreamlove_dateplans') || '[]'); } catch (e) {}
+        plans.unshift(plan);
+        plans = plans.slice(0, 10);
+        localStorage.setItem('lilidreamlove_dateplans', JSON.stringify(plans));
+
+        toast('💘 约会安排好啦');
+        switchTab('plans');
+    }
+    function renderPlans() {
+        var body = modalEl.querySelector('#dq-body');
+        var plans = [];
+        try { plans = JSON.parse(localStorage.getItem('lilidreamlove_dateplans') || '[]'); } catch (e) {}
+        if (!plans.length) { body.innerHTML = '<div style="text-align:center;padding:30px 0;color:var(--text-secondary);font-size:13px;">还没有约会安排。<br>去「问答」答一份吧～</div>'; return; }
+        body.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">📅 我们的约会安排</div>' +
+            plans.map(function (p) {
+                var img = p.image ? '<img src="' + p.image + '" style="width:100%;border-radius:10px;margin-top:8px;max-height:140px;object-fit:cover;">' : '';
+                return '<div style="padding:12px;border:1px solid var(--border-color);border-radius:14px;margin-bottom:10px;background:var(--primary-bg);white-space:pre-wrap;font-size:13px;line-height:1.7;">' + p.text.replace(/[<>&]/g, '') + img + '</div>';
+            }).join('');
+    }
+
+    function toast(msg) {
+        if (typeof showNotification === 'function') showNotification(msg, 'info', 2500);
+    }
+
+    /* ============ 信封快速入口 ============ */
+    window.openEnvelopeQuick = function () {
+        var m = document.getElementById('envelope-modal');
+        if (m && typeof showModal === 'function') showModal(m);
+        else toast('信封模块未就绪');
+    };
+
+    /* ============ 触发：聊天里出现「我想约会」 ============ */
+    window.__dqMaybeTrigger = function (text) {
+        if (!text) return;
+        if (/我想约会|想约会/.test(text)) {
+            setTimeout(function () {
+                toast('💘 想约会？来选一份安排吧');
+                setTimeout(open, 500);
+            }, 400);
+        }
+    };
+
+    load();
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () {});
+})();
