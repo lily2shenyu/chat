@@ -994,6 +994,30 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
         return fragment;
     }
 
+    if (msg.type === 'date') {
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'gift-message ' + (msg.sender === settings.myName ? 'gift-right' : 'gift-left');
+        dateDiv.dataset.id = msg.id;
+        const hint = document.createElement('div');
+        hint.className = 'gift-hint';
+        hint.innerHTML = '💘 约会安排好啦';
+        hint.onclick = function () {
+            const card = dateDiv.querySelector('.gift-card-wrap');
+            if (card) card.style.display = (card.style.display === 'none') ? 'block' : 'none';
+        };
+        const cardWrap = document.createElement('div');
+        cardWrap.className = 'gift-card-wrap';
+        cardWrap.style.display = 'none';
+        const imgHtml = msg.image ? `<img class="gift-card-img" src="${msg.image}" alt="美食">` : '';
+        const bodyHtml = `<div class="gift-card-body"><div class="gift-card-name">我们的约会</div><div class="gift-card-note" style="white-space:pre-wrap;">${String(msg.text||'').replace(/[<>&]/g,'')}</div></div>`;
+        cardWrap.innerHTML = `<div class="gift-card">${imgHtml}${bodyHtml}</div>`;
+        dateDiv.appendChild(hint);
+        dateDiv.appendChild(cardWrap);
+        fragment.appendChild(dateDiv);
+        lastSenderRef.current = 'system';
+        return fragment;
+    }
+
     let showTimestamp = true;
     if (settings.timeFormat === 'off') {
         showTimestamp = false;
@@ -1765,6 +1789,9 @@ const puzzleCount = settings.puzzleCards ? (1 + Math.floor(Math.random() * Math.
                         window._sendPartnerNotification(settings.partnerName || '对方', finalText);
                     }
                     playSound('message');
+                    if (typeof window.__dqMaybeTrigger === 'function') {
+                        window.__dqMaybeTrigger(finalText);
+                    }
 
                     if (shouldSendSticker) {
                         const randomSticker = enabledStickerPool[Math.floor(Math.random() * enabledStickerPool.length)];
