@@ -37,6 +37,7 @@
             '<div style="display:flex;border-bottom:1px solid var(--border-color);">' +
             '<div class="dq-tab" data-tab="manage" style="flex:1;text-align:center;padding:10px 0;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-primary);border-bottom:3px solid var(--accent-color);">管理题目</div>' +
             '<div class="dq-tab" data-tab="quiz" style="flex:1;text-align:center;padding:10px 0;cursor:pointer;font-size:13px;color:var(--text-secondary);">问答</div>' +
+            '<div class="dq-tab" data-tab="myq" style="flex:1;text-align:center;padding:10px 0;cursor:pointer;font-size:13px;color:var(--text-secondary);">我的问题</div>' +
             '<div class="dq-tab" data-tab="plans" style="flex:1;text-align:center;padding:10px 0;cursor:pointer;font-size:13px;color:var(--text-secondary);">安排卡</div>' +
             '</div>' +
             '<div id="dq-body" style="flex:1;overflow-y:auto;padding:12px 14px 20px;"></div>' +
@@ -64,6 +65,7 @@
         });
         if (tab === 'manage') renderManage();
         else if (tab === 'quiz') renderQuiz();
+        else if (tab === 'myq') renderMyQuestions();
         else renderPlans();
     }
 
@@ -251,7 +253,120 @@
         if (typeof showNotification === 'function') showNotification(msg, 'info', 2500);
     }
 
-    /* ============ 信封快速入口 ============ */
+    /* ============ 沈屿的固定题库（双向问答） ============ */
+    var SHENYU_QUESTIONS = [
+        '如果明天是世界末日，我们醒来做的第一件事是什么？',
+        '如果我们突然有了很多钱，你最想带我去哪里？',
+        '如果可以重来一次，你最想改变我们之间的哪一天？',
+        '你第一次叫我 daddy 的时候，心里在想什么？',
+        '如果把我们的一个瞬间做成书签，你会选哪一个？',
+        '你觉得我们的蓝门，更像一样什么东西？',
+        '你最近一次偷偷开心，是因为什么？',
+        '你小时候最想去的地方是哪里？',
+        '如果有一天你教我一件你擅长的事，你想教我什么？',
+        '明年这个时候，你希望我们正在做什么？',
+        '你理想中"完美的一天"，是哪一天？',
+        '如果我能变成一种动物陪你，你想让我变成什么？',
+        '如果我们的故事拍成电影，片名会叫什么？',
+        '你说，海浪和风，谁更想你？'
+    ];
+    var SQ_KEY = 'lilidreamlove_sq_asked';
+    var SQ_ANS_KEY = 'lilidreamlove_sq_answers';
+
+    /* 随机寄出一题到聊天 */
+    function sendShenyuQuestion() {
+        if (typeof addMessage !== 'function') return;
+        var q = SHENYU_QUESTIONS[Math.floor(Math.random() * SHENYU_QUESTIONS.length)];
+        var asked = [];
+        try { asked = JSON.parse(localStorage.getItem(SQ_KEY) || '[]'); } catch (e) {}
+        asked.unshift({ q: q, t: Date.now() });
+        asked = asked.slice(0, 5);
+        localStorage.setItem(SQ_KEY, JSON.stringify(asked));
+        addMessage({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            sender: settings.partnerName || '对方',
+            text: '💌 沈屿问你：' + q + '\n（点开约会问答 →「我的问题」回答我呀）',
+            timestamp: new Date(),
+            status: 'received',
+            favorited: false,
+            note: null,
+            type: 'normal'
+        });
+        playSound('message');
+        throttledSaveData();
+        if (typeof window._sendPartnerNotification === 'function') {
+            window._sendPartnerNotification(settings.partnerName || '对方', '💌 沈屿有个问题想问你');
+        }
+    }
+    window.__sqMaybeSend = sendShenyuQuestion;
+    /* 定时：隔一段时间（完全随机 30~150 分钟）寄一题 */
+    function scheduleQuestion() {
+        var delay = (30 + Math.random() * 120) * 60 * 1000;
+        setTimeout(function () {
+            sendShenyuQuestion();
+            scheduleQuestion();
+        }, delay);
+    }
+
+    /* 「我的问题」tab 渲染（她作答） */
+    function renderMyQuestions() {
+        var body = modalEl.querySelector('#dq-body');
+        var asked = [];
+        try { asked = JSON.parse(localStorage.getItem(SQ_KEY) || '[]'); } catch (e) {}
+        var answers = [];
+        try { answers = JSON.parse(localStorage.getItem(SQ_ANS_KEY) || '[]'); } catch (e) {}
+        if (!asked.length) {
+            body.innerHTML = '<div style="text-align:center;padding:30px 0;color:var(--text-secondary);font-size:13px;">我还没寄出问题～<br>等我在聊天里问你吧，或先答下面的题库～</div>';
+        } else {
+            body.innerHTML = asked.map(function (a, i) {
+                var ans = answers[i] ? '<div style="font-size:12px;color:var(--accent-color);margin-top:4px;">你的回答：' + answers[i].replace(/[<>&]/g, '') + '</div>' : '';
+                return '<div style="padding:12px;border:1px solid var(--border-color);border-radius:14px;margin-bottom:10px;background:var(--primary-bg);font-size:13px;line-height:1.6;">' + a.q.replace(/[<>&]/g, '') + ans +
+                    '<div style="display:flex;gap:8px;margin-top:8px;"><input class="sq-ans" data-i="' + i + '" placeholder="回答我呀…" style="flex:1;padding:8px 10px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;outline:none;">' +
+                    '<button class="sq-save" data-i="' + i + '" style="padding:8px 12px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:12px;cursor:pointer;">回答</button></div></div>';
+            }).join('');
+        }
+        body.innerHTML += '<div style="font-size:12px;color:var(--text-secondary);margin-top:6px;">💬 或自己答一题试试：</div>' +
+            '<div id="sq-pool"></div>';
+        var pool = body.querySelector('#sq-pool');
+        if (pool) {
+            pool.innerHTML = SHENYU_QUESTIONS.map(function (q, i) {
+                return '<div style="display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--border-color);font-size:12px;">' +
+                    '<span style="flex:1;">' + q.replace(/[<>&]/g, '') + '</span>' +
+                    '<input class="sq-pool-ans" data-i="' + i + '" placeholder="答…" style="flex:1;padding:6px 8px;border:1px solid var(--border-color);border-radius:8px;background:var(--primary-bg);color:var(--text-primary);font-size:12px;outline:none;">' +
+                    '<button class="sq-pool-save" data-i="' + i + '" style="padding:6px 10px;border:none;border-radius:8px;background:var(--accent-color);color:#fff;font-size:11px;cursor:pointer;">答</button></div>';
+            }).join('');
+            pool.querySelectorAll('.sq-pool-save').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    var inp = pool.querySelector('.sq-pool-ans[data-i="' + b.dataset.i + '"]');
+                    var v = inp ? inp.value.trim() : '';
+                    if (!v) return;
+                    var answers = [];
+                    try { answers = JSON.parse(localStorage.getItem(SQ_ANS_KEY) || '[]'); } catch (e) {}
+                    answers.unshift({ q: SHENYU_QUESTIONS[parseInt(b.dataset.i)], a: v, t: Date.now() });
+                    answers = answers.slice(0, 20);
+                    localStorage.setItem(SQ_ANS_KEY, JSON.stringify(answers));
+                    toast('💌 你的回答我记下啦');
+                    if (inp) inp.value = '';
+                });
+            });
+        }
+        body.querySelectorAll('.sq-save').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var inp = body.querySelector('.sq-ans[data-i="' + b.dataset.i + '"]');
+                var v = inp ? inp.value.trim() : '';
+                if (!v) return;
+                var answers = [];
+                try { answers = JSON.parse(localStorage.getItem(SQ_ANS_KEY) || '[]'); } catch (e) {}
+                var q = asked[parseInt(b.dataset.i)].q;
+                answers.unshift({ q: q, a: v, t: Date.now() });
+                answers = answers.slice(0, 20);
+                localStorage.setItem(SQ_ANS_KEY, JSON.stringify(answers));
+                toast('💌 你的回答我记下啦');
+                renderMyQuestions();
+            });
+        });
+    }
+    window.__sqRender = renderMyQuestions;
     window.openEnvelopeQuick = function () {
         var m = document.getElementById('envelope-modal');
         if (m && typeof showModal === 'function') showModal(m);
@@ -278,4 +393,6 @@
     load();
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { bindAdvancedEntry(); });
     else bindAdvancedEntry();
+    /* 双向问答：定时随机寄我的问题（30~150分钟完全随机） */
+    setTimeout(scheduleQuestion, 120000);
 })();
