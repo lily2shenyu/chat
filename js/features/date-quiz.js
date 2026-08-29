@@ -137,70 +137,79 @@
         if (i >= 0 && i < dq.questions.length) { dq.questions.splice(i, 1); save(); renderManage(); }
     };
 
-    /* ============ 问答 ============ */
+    /* ============ 问答：她出题 → 设回复时间 → 到点我回信 ============ */
     function renderQuiz() {
         var body = modalEl.querySelector('#dq-body');
         if (!dq.questions.length) {
             body.innerHTML = '<div style="text-align:center;padding:30px 0;color:var(--text-secondary);font-size:13px;">还没有题目。<br>去「管理题目」出几道题吧～</div>';
             return;
         }
-        answers = {};
-        var h = '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">👇 问卷来啦，每题都要答哦</div>';
+        var h = '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6;">💌 把这份问卷寄给我，我会像回信一样答好，送到你面前。</div>';
         h += dq.questions.map(function (q, i) {
             if (q.type === 'choice') {
-                var opts = q.opts.map(function (o, j) {
-                    return '<button class="dq-opt" data-i="' + i + '" data-v="' + o.replace(/"/g, '"') + '" style="display:block;width:100%;text-align:left;padding:10px 12px;margin-bottom:6px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;cursor:pointer;">' + o.replace(/[<>&]/g, '') + '</button>';
-                }).join('');
-                return '<div style="font-size:14px;font-weight:600;margin:10px 0 6px;">' + (i + 1) + '. ' + q.q.replace(/[<>&]/g, '') + '</div>' + opts;
+                return '<div style="font-size:14px;font-weight:600;margin:8px 0 4px;">' + (i + 1) + '. ' + q.q.replace(/[<>&]/g, '') + '</div>' +
+                    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px;">选项：' + q.opts.map(function (o) { return o.replace(/[<>&]/g, ''); }).join('、') + '</div>';
             }
-            return '<div style="font-size:14px;font-weight:600;margin:10px 0 6px;">' + (i + 1) + '. ' + q.q.replace(/[<>&]/g, '') + '</div>' +
-                '<div style="display:flex;gap:8px;"><input class="dq-text" data-i="' + i + '" placeholder="从字卡里选，或自己写…" style="flex:1;padding:9px 12px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;outline:none;">' +
-                '<button class="dq-pickcard" data-i="' + i + '" style="padding:9px 12px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:12px;cursor:pointer;">字卡</button></div>';
+            return '<div style="font-size:14px;font-weight:600;margin:8px 0 4px;">' + (i + 1) + '. ' + q.q.replace(/[<>&]/g, '') + '（填空题，我会从字卡里答）</div>';
         }).join('');
-        h += '<button id="dq-submit" style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-top:14px;">💘 确认约会安排</button>';
+        if (dq.images.length) {
+            h += '<div style="font-size:12px;color:var(--text-secondary);margin:8px 0 4px;">🍽️ 美食图片（我会挑一张想吃的小图放进行）</div>';
+            h += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">' + dq.images.map(function (img, i) {
+                return '<img src="' + img + '" style="width:52px;height:52px;border-radius:8px;object-fit:cover;">';
+            }).join('') + '</div>';
+        }
+        h += '<div style="font-size:13px;font-weight:700;margin:14px 0 6px;">⏰ 回复时间（30秒 ~ 24小时）</div>';
+        h += '<input type="range" id="dq-delay" min="0.5" max="1440" step="0.5" value="5" style="width:100%;accent-color:var(--accent-color);">';
+        h += '<div style="text-align:center;font-size:13px;color:var(--text-primary);margin:6px 0 10px;"><span id="dq-delay-txt">5 分钟</span> 后回信</div>';
+        h += '<button id="dq-send" style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">💌 寄出问卷，等我回信</button>';
         body.innerHTML = h;
-        body.querySelectorAll('.dq-opt').forEach(function (b) {
-            b.addEventListener('click', function () {
-                answers[b.dataset.i] = b.dataset.v;
-                body.querySelectorAll('.dq-opt').forEach(function (x) { x.style.borderColor = 'var(--border-color)'; x.style.background = 'var(--primary-bg)'; });
-                b.style.borderColor = 'var(--accent-color)'; b.style.background = 'rgba(var(--accent-color-rgb),0.12)';
-            });
-        });
-        body.querySelectorAll('.dq-pickcard').forEach(function (b) {
-            b.addEventListener('click', function () {
-                var pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies)) ? customReplies : [];
-                if (!pool.length) { toast('字卡库是空的'); return; }
-                var card = pool[Math.floor(Math.random() * pool.length)];
-                var inp = body.querySelector('.dq-text[data-i="' + b.dataset.i + '"]');
-                if (inp) inp.value = String(card);
-                answers[b.dataset.i] = String(card);
-            });
-        });
-        body.querySelectorAll('.dq-text').forEach(function (inp) {
-            inp.addEventListener('input', function () { answers[inp.dataset.i] = inp.value; });
-        });
-        body.querySelector('#dq-submit').addEventListener('click', function () {
-            var done = 0;
-            dq.questions.forEach(function (q, i) {
-                if (q.type === 'choice') { if (answers[i]) done++; }
-                else { var v = (body.querySelector('.dq-text[data-i="' + i + '"]') || {}).value || ''; if (v.trim()) { answers[i] = v.trim(); done++; } }
-            });
-            if (done < dq.questions.length) { toast('还有题目没答完哦'); return; }
-            buildPlan();
+        var slider = body.querySelector('#dq-delay');
+        var txt = body.querySelector('#dq-delay-txt');
+        function fmt(v) {
+            if (v < 1) return '30 秒';
+            if (v < 60) return Math.round(v) + ' 分钟';
+            return (v / 60).toFixed(v % 60 === 0 ? 0 : 1) + ' 小时';
+        }
+        slider.addEventListener('input', function () { txt.textContent = fmt(parseFloat(slider.value)); });
+        body.querySelector('#dq-send').addEventListener('click', function () {
+            var delayMin = parseFloat(slider.value);
+            var due = Date.now() + (delayMin < 1 ? 30 : delayMin * 60) * 1000;
+            localStorage.setItem('lilidreamlove_dq_pending', String(due));
+            toast('💌 问卷寄出啦，到点我回信');
+            close();
+            ensureTimer();
         });
     }
 
-    /* ============ 安排卡 ============ */
-    function buildPlan() {
+    /* 定时检查：到点自动回信 */
+    var timerOn = false;
+    function ensureTimer() {
+        if (timerOn) return;
+        timerOn = true;
+        setInterval(function () {
+            var due = parseInt(localStorage.getItem('lilidreamlove_dq_pending') || '0', 10);
+            if (!due || Date.now() < due) return;
+            localStorage.removeItem('lilidreamlove_dq_pending');
+            buildPlanAuto();
+        }, 5000);
+    }
+
+    function buildPlanAuto() {
         var lines = [];
         var food = dq.images.length ? dq.images[Math.floor(Math.random() * dq.images.length)] : null;
-        dq.questions.forEach(function (q, i) {
-            lines.push(q.q + '：' + (answers[i] || '—'));
+        var cardPool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies)) ? customReplies : [];
+        dq.questions.forEach(function (q) {
+            if (q.type === 'choice') {
+                var pick = q.opts[Math.floor(Math.random() * q.opts.length)];
+                lines.push(q.q + '：' + (pick || '—'));
+            } else {
+                var card = cardPool.length ? String(cardPool[Math.floor(Math.random() * cardPool.length)]) : '（字卡库空的，先填一句吧）';
+                lines.push(q.q + '：' + card);
+            }
         });
         var summary = '💘 约会安排\n' + lines.join('\n');
         var plan = { time: Date.now(), text: summary, image: food };
 
-        /* 聊天消息（date 类型，可折叠） */
         if (typeof addMessage === 'function') {
             addMessage({
                 id: Date.now() + Math.floor(Math.random() * 1000),
@@ -215,16 +224,16 @@
             });
             playSound('message');
             throttledSaveData();
+            if (typeof window._sendPartnerNotification === 'function') {
+                window._sendPartnerNotification(settings.partnerName || '对方', '💘 约会安排好啦，我回信了');
+            }
         }
-        /* 存最近安排 */
         var plans = [];
         try { plans = JSON.parse(localStorage.getItem('lilidreamlove_dateplans') || '[]'); } catch (e) {}
         plans.unshift(plan);
         plans = plans.slice(0, 10);
         localStorage.setItem('lilidreamlove_dateplans', JSON.stringify(plans));
-
-        toast('💘 约会安排好啦');
-        switchTab('plans');
+        toast('💘 我回信啦，去看约会安排');
     }
     function renderPlans() {
         var body = modalEl.querySelector('#dq-body');
