@@ -11,7 +11,7 @@
             var last = 0;
             try { last = parseInt(localStorage.getItem(KEY) || '0', 10) || 0; } catch (e) {}
             var now = Date.now();
-            var interval = (1.5 + Math.random() * 1.5) * 3600 * 1000;
+            var interval = (20 + Math.random() * 130) * 60 * 1000;
             if (last && (now - last) < interval) return;
 
             var pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
