@@ -1073,9 +1073,6 @@
                     <button class="cs-tab" data-panel="cs-panel-names" onclick="switchCsTab(this)">
                         <i class="fas fa-user-edit"></i> 昵称
                     </button>
-                    <button class="cs-tab" data-panel="cs-panel-advanced" onclick="switchCsTab(this)">
-                        <i class="fas fa-gem"></i> 高级
-                    </button>
                 </div>
             </div>
 
@@ -1188,16 +1185,6 @@
                                 <span class="notif-toggle-slider"></span>
                             </label>
                         </div>
-                    </div>
-                </div>
-
-                <div class="cs-panel" id="cs-panel-advanced">
-                    <p class="cs-group-label">高级功能</p>
-                    <div class="cs-card" style="padding:12px;">
-                        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">💘 约会问答</div>
-                        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6;">我在聊天里说"想约会"时，你的问卷会来问我。<br>你可以自己出题、加选项、加美食图片。</div>
-                        <button onclick="openDateQuiz()" style="width:100%;padding:10px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:13px;cursor:pointer;margin-bottom:8px;">💘 打开约会问答</button>
-                        <button onclick="openEnvelopeQuick()" style="width:100%;padding:10px;border:1px solid var(--accent-color);border-radius:10px;background:transparent;color:var(--accent-color);font-size:13px;cursor:pointer;">✉️ 信封投递</button>
                     </div>
                 </div>
 
@@ -1413,6 +1400,9 @@
                     </div>
                     <div class="settings-item" id="envelope-function">
                         <i class="fas fa-envelope"></i><span>信封投递</span>
+                    </div>
+                    <div class="settings-item" id="date-quiz-function">
+                        <i class="fas fa-glass-cheers"></i><span>约会问答</span>
                     </div>
                 </div>
             </div>
