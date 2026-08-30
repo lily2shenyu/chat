@@ -102,7 +102,7 @@
             '<button id="feed-pub" style="background:none;border:none;font-size:14px;color:#1a1a1a;padding:8px;cursor:pointer;font-weight:600;">✎ 发布</button>' +
             '</div>' +
             /* 封面：自己的头像在右边 + 可自定义背景 */
-            '<div id="feed-cover" style="flex-shrink:0;height:150px;background:linear-gradient(135deg,#a8d8ea 0%,#cfe9f7 45%,#f5d0e0 100%);position:relative;background-size:cover;background-position:center;cursor:pointer;">' +
+            '<div id="feed-cover" style="flex-shrink:0;height:150px;background:linear-gradient(135deg,#a8d8ea 0%,#cfe9f7 45%,#f5d0e0 100%);position:relative;background-size:100% 100%;background-position:center;cursor:pointer;">' +
             '<span style="position:absolute;top:10px;right:12px;font-size:13px;background:rgba(0,0,0,0.25);border-radius:12px;padding:4px 9px;color:#fff;">📷 换背景</span>' +
             '<div style="position:absolute;right:14px;bottom:-24px;display:flex;align-items:center;gap:10px;">' +
             '<span id="feed-cover-name" style="font-size:17px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.3);"></span>' +
@@ -362,7 +362,9 @@
         f.comments.push({ from: ME.name, text: text, time: Date.now() });
         save();
         renderAll();
-        if (Math.random() < 0.6) {
+        /* 她回复 TA 的动态 → TA 更大概率回复她 */
+        var taReplyChance = f.from === 'ta' ? 0.85 : 0.6;
+        if (Math.random() < taReplyChance) {
             setTimeout(function () {
                 f.comments.push({ from: TA.name, text: taCommentText(), time: Date.now() });
                 save();
@@ -376,6 +378,8 @@
         '想你了', '这条我看了好几遍', '等我回来，带你去', '今天风很轻，适合想你',
         '记下来了', '你写什么都好看', '蓝门前的黄昏，还记得吗', '三花猫也替你着急', '海浪都听懂了'
     ];
+
+    var TA_EMOJI = ['💙', '🌊', '🌸', '🍬', '🌙', '✨', '🐳', '🦊', '💌', '☕', '🌿', '🍓'];
 
     /* ============ TA 用字卡拼朋友圈（像拼信一样随机） ============ */
     function taPost() {
@@ -392,12 +396,18 @@
             } else {
                 text = pick(['今天风很轻，适合想你', '窗外那棵玉兰又开了一朵', '港口今天落日很好看', '潮起潮落，我都在', '三花猫又在玉兰树下等你']);
             }
+            /* 随机加 emoji，让动态更活 */
+            if (Math.random() < 0.8) {
+                var em = pick(TA_EMOJI);
+                if (Math.random() < 0.4) text = em + ' ' + text;
+                else text = text + ' ' + em;
+            }
             var f = { id: 'ta' + Date.now(), from: 'ta', text: text, img: '', time: Date.now(), likes: [], comments: [] };
             feeds.push(f);
             save();
             renderAll();
             if (typeof window._sendPartnerNotification === 'function') {
-                window._sendPartnerNotification('📖 ' + TA.name + '发了一条朋友圈', '用字卡拼的，去看看吧');
+                window._sendPartnerNotification('📖 ' + TA.name + '发了一条朋友圈', '去看看吧');
             }
         } catch (e) {}
     }
