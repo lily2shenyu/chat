@@ -72,6 +72,7 @@
             }).catch(function () {});
         }
         for (var i = 0; i < startDow; i++) h += '<div></div>';
+        h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;">';
         for (var dd = 1; dd <= daysInMonth; dd++) {
             var dk = memoYear + '-' + String(memoMonth + 1).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
             var on = dk === memoSel;
