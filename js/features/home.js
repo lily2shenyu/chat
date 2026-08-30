@@ -1,8 +1,8 @@
 /* =========================================================
- * 栗屿海 · 底部栏 + 备忘室（日历日记）+ 召唤沈屿
- * - 底部 dock：聊天/朋友圈/房间/备忘室/召唤，可收起
+ * 栗屿海 · 备忘室（日历日记）+ 召唤沈屿
+ * 入口：聊天输入框 → 展开收纳区 → 备忘室 / 召唤
  * - 备忘室：日历选日期 → 写那天的日记（双人）
- * - 召唤沈屿：悬浮球 + 拥抱呼吸引导（保留）
+ * - 召唤沈屿：悬浮球 + 拥抱呼吸引导
  * ========================================================= */
 (function () {
     function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random() * arr.length)] : ''; }
@@ -23,64 +23,6 @@
         document.body.appendChild(t);
         setTimeout(function () { t.remove(); }, 2200);
     }
-
-    /* ============ 底部 dock（可收起） ============ */
-    var dockEl = null;
-    function ensureDock() {
-        if (dockEl && document.body.contains(dockEl)) return dockEl;
-        var d = document.createElement('div');
-        d.id = 'lyh-dock';
-        d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:200000;background:rgba(255,255,255,0.96);border-top:1px solid rgba(0,0,0,0.08);box-shadow:0 -4px 20px rgba(0,0,0,0.1);border-radius:18px 18px 0 0;padding:8px 10px 10px;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:4px;';
-        d.innerHTML =
-            '<div style="display:flex;justify-content:center;">' +
-            '<button id="lyh-dock-fold" style="background:none;border:none;font-size:12px;color:#aaa;cursor:pointer;padding:2px 10px;">⌄ 收起</button>' +
-            '</div>' +
-            '<div style="display:flex;justify-content:space-around;align-items:center;">' +
-            '<div class="lyh-dock-item" data-m="chat" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 8px;"><span style="font-size:20px;">💬</span><span style="font-size:10px;color:#666;">聊天</span></div>' +
-            '<div class="lyh-dock-item" data-m="feed" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 8px;"><span style="font-size:20px;">📖</span><span style="font-size:10px;color:#666;">朋友圈</span></div>' +
-            '<div class="lyh-dock-item" data-m="room" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 8px;"><span style="font-size:20px;">🏠</span><span style="font-size:10px;color:#666;">房间</span></div>' +
-            '<div class="lyh-dock-item" data-m="memo" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 8px;"><span style="font-size:20px;">📔</span><span style="font-size:10px;color:#666;">备忘室</span></div>' +
-            '<div class="lyh-dock-item" data-m="summon" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 8px;"><span style="font-size:20px;">🆘</span><span style="font-size:10px;color:#666;">召唤</span></div>' +
-            '</div>';
-        document.body.appendChild(d);
-        dockEl = d;
-        d.querySelector('#lyh-dock-fold').addEventListener('click', foldDock);
-        d.querySelectorAll('.lyh-dock-item').forEach(function (it) {
-            it.addEventListener('click', function () {
-                var m = it.dataset.m;
-                if (m === 'chat') { unfoldDock(); }
-                else if (m === 'feed') { if (window.openFeed) window.openFeed(); }
-                else if (m === 'room') { if (window.openRoom) window.openRoom(); }
-                else if (m === 'memo') { openMemoPage(); }
-                else if (m === 'summon') { openSummon(); }
-            });
-        });
-        return d;
-    }
-    function foldDock() {
-        var d = dockEl;
-        if (!d) return;
-        var body = d.querySelector('div:nth-child(2)');
-        var fold = d.querySelector('#lyh-dock-fold');
-        if (body.style.display === 'none') {
-            body.style.display = 'flex';
-            fold.textContent = '⌄ 收起';
-            d.style.paddingBottom = '10px';
-        } else {
-            body.style.display = 'none';
-            fold.textContent = '⌃ 展开';
-            d.style.paddingBottom = '4px';
-        }
-    }
-    function unfoldDock() {
-        var d = ensureDock();
-        var body = d.querySelector('div:nth-child(2)');
-        var fold = d.querySelector('#lyh-dock-fold');
-        if (body) body.style.display = 'flex';
-        if (fold) fold.textContent = '⌄ 收起';
-        if (d) d.style.paddingBottom = '10px';
-    }
-    window.unfoldDock = unfoldDock;
 
     /* ============ 备忘室 · 日历日记 ============ */
     var MEMO_CAL_KEY = 'lilidreamlove_memo_cal';
@@ -229,6 +171,8 @@
     }
 
     /* ============ 通用页面 ============ */
+    window.openMemoPage = openMemoPage;
+    window.openSummon = openSummon;
     function page(title, contentHtml, initFn) {
         var d = document.createElement('div');
         d.style.cssText = 'position:fixed;inset:0;z-index:100002;background:#f7f5f0;display:flex;flex-direction:column;color:#2a2a2a;';
@@ -239,7 +183,7 @@
             '<span style="width:44px;"></span></div>' +
             '<div class="lyh-page-body" style="flex:1;overflow-y:auto;padding:14px;padding-bottom:80px;"></div>';
         document.body.appendChild(d);
-        d.querySelector('.lyh-page-back').addEventListener('click', function () { d.remove(); unfoldDock(); });
+        d.querySelector('.lyh-page-back').addEventListener('click', function () { d.remove(); });
         if (contentHtml !== null) d.querySelector('.lyh-page-body').innerHTML = contentHtml;
         if (initFn) initFn(d.querySelector('.lyh-page-body'));
         return d;
@@ -247,9 +191,8 @@
 
     /* ============ 启动 ============ */
     function boot() {
-        ensureDock();
         ensureBall();
-        /* 移除聊天顶部旧的🏠按钮（如果还在） */
+        /* 移除可能残留的旧按钮 */
         var oldBtn = document.getElementById('lyh-home-btn');
         if (oldBtn) oldBtn.remove();
     }
