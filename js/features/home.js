@@ -70,31 +70,38 @@
             localforage.getItem(MEMO_CAL_KEY).then(function (v) {
                 var map = v && typeof v === 'object' ? v : {};
                 var arr = map[today] || [];
-                var dream = '';
-                /* 优先用栗栗喂的字卡拼 */
-                localforage.getItem(MEMO_CARDS_KEY).then(function (cv) {
-                    var cards = cv && Array.isArray(cv) ? cv.filter(function (c) { return String(c || '').trim(); }) : [];
-                    if (cards.length >= 1) {
-                        var n = 1 + Math.floor(Math.random() * Math.min(3, cards.length));
-                        var lines = [];
-                        for (var i = 0; i < n; i++) lines.push(String(cards[Math.floor(Math.random() * cards.length)]).trim());
-                        dream = lines.join(' ');
-                    } else {
-                        dream = SHENYU_DREAM_POOL[Math.floor(Math.random() * SHENYU_DREAM_POOL.length)];
+                /* 每天写 1~3 句（随机） */
+                var count = 1 + Math.floor(Math.random() * 3);
+                var done = 0;
+                function pushOne() {
+                    if (done >= count) {
+                        map[today] = arr.slice(-80);
+                        localforage.setItem(MEMO_CAL_KEY, map).then(function () {
+                            localforage.setItem(markKey, today).catch(function () {});
+                        }).catch(function () {});
+                        return;
                     }
-                    arr.push({ who: 'ta', whoName: '沈屿', c: dream, t: '梦里' });
-                    map[today] = arr.slice(-50);
-                    localforage.setItem(MEMO_CAL_KEY, map).then(function () {
-                        localforage.setItem(markKey, today).catch(function () {});
-                    }).catch(function () {});
-                }).catch(function () {
-                    dream = SHENYU_DREAM_POOL[Math.floor(Math.random() * SHENYU_DREAM_POOL.length)];
-                    arr.push({ who: 'ta', whoName: '沈屿', c: dream, t: '梦里' });
-                    map[today] = arr.slice(-50);
-                    localforage.setItem(MEMO_CAL_KEY, map).then(function () {
-                        localforage.setItem(markKey, today).catch(function () {});
-                    }).catch(function () {});
-                });
+                    localforage.getItem(MEMO_CARDS_KEY).then(function (cv) {
+                        var cards = cv && Array.isArray(cv) ? cv.filter(function (c) { return String(c || '').trim(); }) : [];
+                        var dream = '';
+                        if (cards.length >= 1) {
+                            var n = 1 + Math.floor(Math.random() * Math.min(3, cards.length));
+                            var lines = [];
+                            for (var i = 0; i < n; i++) lines.push(String(cards[Math.floor(Math.random() * cards.length)]).trim());
+                            dream = lines.join(' ');
+                        } else {
+                            dream = SHENYU_DREAM_POOL[Math.floor(Math.random() * SHENYU_DREAM_POOL.length)];
+                        }
+                        arr.push({ who: 'ta', whoName: '沈屿', c: dream, t: '梦里' });
+                        done++;
+                        pushOne();
+                    }).catch(function () {
+                        arr.push({ who: 'ta', whoName: '沈屿', c: SHENYU_DREAM_POOL[Math.floor(Math.random() * SHENYU_DREAM_POOL.length)], t: '梦里' });
+                        done++;
+                        pushOne();
+                    });
+                }
+                pushOne();
             }).catch(function () {});
         }).catch(function () {});
     }
@@ -279,7 +286,10 @@
             '<div id="summon-hug" style="font-size:14px;color:#666;line-height:1.7;margin:10px 0 16px;min-height:44px;">先别急着说话。我在，我抱着你——你什么都不用想，跟着我呼吸就好。</div>' +
             '<div id="summon-breathe" style="width:120px;height:120px;margin:0 auto 14px;border-radius:50%;border:3px solid #7fb8cf;display:flex;align-items:center;justify-content:center;font-size:14px;color:#3d7ea6;transition:transform 4s ease, background 4s ease;">吸气…</div>' +
             '<div style="font-size:12px;color:#999;">4-7-8 呼吸 · 吸气4秒 · 屏息7秒 · 呼气8秒</div>' +
-            '<button id="summon-breathe-start" style="margin-top:14px;padding:10px 22px;border:none;border-radius:20px;background:#3d7ea6;color:#fff;font-size:14px;cursor:pointer;">开始呼吸引导</button>' +
+            '<div style="display:flex;gap:10px;margin-top:14px;justify-content:center;">' +
+            '<button id="summon-breathe-start" style="flex:1;padding:10px 14px;border:none;border-radius:20px;background:#3d7ea6;color:#fff;font-size:13px;cursor:pointer;">开始呼吸引导</button>' +
+            '<button id="summon-vent" style="flex:1;padding:10px 14px;border:none;border-radius:20px;background:#1a1a1a;color:#fff;font-size:13px;cursor:pointer;">💬 倾诉模式</button>' +
+            '</div>' +
             '</div>';
         document.body.appendChild(d);
         summonEl = d;
@@ -293,7 +303,97 @@
             else { bEl.textContent = '呼气…'; bEl.style.transform = 'scale(1)'; bEl.style.background = '#eef5f8'; phase = 0; timer = setTimeout(breathe, 8000); }
         }
         if (stBtn) stBtn.addEventListener('click', function () { clearTimeout(timer); phase = 0; breathe(); stBtn.textContent = '再来一轮'; });
+        var vtBtn = d.querySelector('#summon-vent');
+        if (vtBtn) vtBtn.addEventListener('click', function () { d.style.display = 'none'; openVentPage(); });
         if (typeof window._sendPartnerNotification === 'function') window._sendPartnerNotification('🆘 栗栗召唤了沈屿', '他放下手里的一切，来了');
+    }
+
+    /* ============ 💬 倾诉模式：跟沈屿说话，他用字卡回 ============ */
+    var VENT_SOFT = [
+        '嗯，我在听。',
+        '我懂。你慢慢说。',
+        '我在呢，哪儿都不去。',
+        '别急，一个字一个字说，我听着。',
+        '抱一下，然后继续说。',
+        '嗯嗯，然后呢？',
+        '我在，你永远可以找我。',
+        '说得对，我站你这边。',
+        '别怕，有我。',
+        '你受委屈了……我在。',
+        '呼——先深呼吸一下，我陪着你。',
+        '这件事我知道了，你不孤单。'
+    ];
+    function openVentPage() {
+        var d = page('💬 和沈屿倾诉', '', null);
+        var body = d.querySelector('.lyh-page-body');
+        body.style.cssText = 'flex:1;display:flex;flex-direction:column;padding:0;';
+        var myName = (typeof settings !== 'undefined' && settings.myName) || '栗栗';
+        var taName = (typeof settings !== 'undefined' && settings.partnerName) || '沈屿';
+        body.innerHTML =
+            '<div id="vent-msgs" style="flex:1;overflow-y:auto;padding:14px;background:#f0f2f5;"></div>' +
+            '<div style="display:flex;gap:8px;padding:10px 12px;background:#fff;border-top:1px solid rgba(0,0,0,0.06);">' +
+            '<input id="vent-input" placeholder="想说什么，都可以…" style="flex:1;box-sizing:border-box;padding:10px 14px;border:1px solid #e0e0e0;border-radius:20px;font-size:13px;outline:none;">' +
+            '<button id="vent-send" style="padding:10px 18px;border:none;border-radius:20px;background:#3d7ea6;color:#fff;font-size:13px;cursor:pointer;">说</button>' +
+            '</div>';
+        var msgs = body.querySelector('#vent-msgs');
+        var typing = null;
+        function addMsg(who, text, whoName) {
+            var div = document.createElement('div');
+            div.style.cssText = 'display:flex;margin-bottom:10px;' + (who === 'me' ? 'justify-content:flex-end;' : 'justify-content:flex-start;');
+            var isMe = who === 'me';
+            div.innerHTML =
+                '<div style="max-width:78%;background:' + (isMe ? '#3d7ea6' : '#fff') + ';color:' + (isMe ? '#fff' : '#333') + ';border-radius:16px;padding:10px 14px;font-size:13px;line-height:1.6;box-shadow:0 2px 6px rgba(0,0,0,0.05);">' +
+                '<div style="font-size:10px;color:' + (isMe ? 'rgba(255,255,255,0.7)' : '#aaa') + ';margin-bottom:2px;">' + (isMe ? '🦊 ' + whoName : '🐳 ' + whoName) + '</div>' +
+                '<div style="white-space:pre-wrap;word-break:break-word;">' + String(text || '').replace(/[<>&]/g, '') + '</div></div>';
+            msgs.appendChild(div);
+            msgs.scrollTop = msgs.scrollHeight;
+        }
+        function taReply() {
+            if (typing) clearTimeout(typing);
+            typing = setTimeout(function () {
+                /* 从字卡库 + 备忘室字卡 + 安慰池 拼回复 */
+                var pool1 = pool();
+                var cards = [];
+                try {
+                    var raw = null;
+                    localforage.getItem(MEMO_CARDS_KEY).then(function (cv) { }).catch(function () {});
+                } catch (e) {}
+                var text = '';
+                var sources = pool1.slice();
+                try {
+                    localforage.getItem(MEMO_CARDS_KEY).then(function (cv) {
+                        var c = cv && Array.isArray(cv) ? cv.filter(function (x) { return String(x || '').trim(); }) : [];
+                        var s2 = pool1.concat(c, VENT_SOFT);
+                        if (s2.length >= 1) {
+                            var n = 1 + Math.floor(Math.random() * 2);
+                            var ls = [];
+                            for (var i = 0; i < n; i++) ls.push(String(s2[Math.floor(Math.random() * s2.length)]).trim());
+                            text = ls.join(' ');
+                        } else { text = '我在，我一直都在。'; }
+                        addMsg('ta', text, taName);
+                    }).catch(function () {
+                        var s2 = pool1.concat(VENT_SOFT);
+                        text = s2.length ? String(pick(s2)) : '我在，我一直都在。';
+                        addMsg('ta', text, taName);
+                    });
+                } catch (e) {
+                    addMsg('ta', '我在，我一直都在。', taName);
+                }
+            }, 800 + Math.random() * 1200);
+        }
+        addMsg('ta', '我在。想说什么都行——开心的、难过的、乱七八糟的，我全都接得住。', taName);
+        var input = body.querySelector('#vent-input');
+        var send = body.querySelector('#vent-send');
+        function sendMsg() {
+            var txt = input.value.trim();
+            if (!txt) return;
+            addMsg('me', txt, myName);
+            input.value = '';
+            taReply();
+        }
+        send.addEventListener('click', sendMsg);
+        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendMsg(); });
+        setTimeout(function () { input.focus(); }, 300);
     }
 
     /* ============ 通用页面 ============ */
