@@ -10945,9 +10945,9 @@
         .gift-card-wrap { margin-top: 6px; }
         .gift-card {
             max-width: 260px; border-radius: 16px; overflow: hidden;
-            background: linear-gradient(160deg, rgba(255,150,180,0.16), rgba(255,200,160,0.05));
-            border: 1px solid rgba(255,150,180,0.32);
-            box-shadow: 0 6px 18px rgba(255,130,170,0.18);
+            background: #ffffff;
+            border: 1px solid rgba(0,0,0,0.08);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.06);
         }
         .gift-card .gift-card-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
         .gift-card .gift-card-body { padding: 6px 10px 8px; text-align: left; }
