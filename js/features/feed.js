@@ -464,7 +464,7 @@
             save();
             renderAll();
             if (typeof window._sendPartnerNotification === 'function') {
-                window._sendPartnerNotification('📖 ' + TA.name + '发了一条朋友圈', '去看看吧');
+                window._sendPartnerNotification('📖 沈屿发了一条朋友圈', '去看看吧');
             }
         } catch (e) {}
     }
