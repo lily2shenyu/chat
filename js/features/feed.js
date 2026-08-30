@@ -200,7 +200,13 @@
                     h += '<div style="margin-top:6px;background:#f7f7f7;border-radius:8px;padding:6px 8px;">';
                     for (var c = 0; c < f.comments.length; c++) {
                         var cm = f.comments[c];
-                        h += '<div style="font-size:12px;margin:2px 0;color:#555;"><b>' + esc(cm.from) + '：</b>' + esc(cm.text) + ' <span style="color:#aaa;font-size:10px;">' + timeStr(cm.time) + '</span></div>';
+                        h += '<div style="font-size:12px;margin:3px 0;color:#555;">';
+                        if (cm.replyTo) {
+                            h += '<span style="color:#888;">回复 <b>' + esc(cm.replyTo.name) + '</b>：</span>';
+                        }
+                        h += '<b>' + esc(cm.from) + '：</b>' + esc(cm.text);
+                        h += ' <span class="cmt-reply" data-fid="' + f.id + '" data-ci="' + c + '" style="font-size:10px;color:#aaa;cursor:pointer;margin-left:4px;">↩回复</span>';
+                        h += ' <span style="color:#aaa;font-size:10px;">' + timeStr(cm.time) + '</span></div>';
                     }
                     h += '</div>';
                 }
@@ -223,9 +229,24 @@
                 });
                 var sendEl = document.getElementById('cmtsend-' + f.id);
                 if (sendEl) sendEl.addEventListener('click', function () { doComment(f); });
+                /* 楼中楼：点某条评论的"回复"，评论框指向它 */
+                body.querySelectorAll('.cmt-reply[data-fid="' + f.id + '"]').forEach(function (r) {
+                    r.addEventListener('click', function () {
+                        var ci = parseInt(r.dataset.ci, 10);
+                        var cm = f.comments[ci];
+                        if (!cm) return;
+                        replyTarget = { fid: f.id, name: cm.from, text: cm.text };
+                        var box = document.getElementById('cmtbox-' + f.id);
+                        if (box) box.style.display = 'block';
+                        var input = document.getElementById('cmtin-' + f.id);
+                        if (input) { input.placeholder = '回复 ' + cm.from + '…'; input.focus(); }
+                    });
+                });
             })(feeds[j]);
         }
     }
+
+    var replyTarget = null;
 
     /* ============ 发布面板（底部弹出） ============ */
     var pubEl = null;
@@ -380,14 +401,27 @@
         var text = input ? input.value.trim() : '';
         if (!text) return;
         f.comments = f.comments || [];
-        f.comments.push({ from: ME.name, text: text, time: Date.now() });
+        var cm = { from: ME.name, text: text, time: Date.now() };
+        if (replyTarget && replyTarget.fid === f.id) {
+            cm.replyTo = { name: replyTarget.name, text: replyTarget.text };
+            replyTarget = null;
+        }
+        f.comments.push(cm);
         save();
         renderAll();
-        /* 她回复 TA 的动态 → TA 更大概率回复她 */
+        /* 她回复 TA 的动态 → TA 更大概率回复她（还会顺着她的回复回） */
         var taReplyChance = f.from === 'ta' ? 0.85 : 0.6;
         if (Math.random() < taReplyChance) {
             setTimeout(function () {
-                f.comments.push({ from: TA.name, text: taCommentText(), time: Date.now() });
+                var rc = { from: TA.name, text: taCommentText(), time: Date.now() };
+                /* TA 顺着她刚发的评论回，形成对话链 */
+                for (var i = f.comments.length - 1; i >= 0; i--) {
+                    if (f.comments[i].from === ME.name) {
+                        rc.replyTo = { name: ME.name, text: f.comments[i].text };
+                        break;
+                    }
+                }
+                f.comments.push(rc);
                 save();
                 renderAll();
                 toast('🐳 ' + TA.name + '回复了你');
