@@ -41,28 +41,48 @@
         var h = '';
         h += '<div style="background:#fff;border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">';
         h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
-        h += '<button id="memo-prev" style="background:none;border:none;font-size:16px;color:#555;cursor:pointer;padding:4px 8px;">‹</button>';
-        h += '<span id="memo-ym" style="font-size:14px;font-weight:700;">' + memoYear + '年' + (memoMonth + 1) + '月</span>';
-        h += '<button id="memo-next" style="background:none;border:none;font-size:16px;color:#555;cursor:pointer;padding:4px 8px;">›</button>';
+        h += '<button id="memo-prev" style="background:none;border:none;font-size:18px;color:#555;cursor:pointer;padding:4px 10px;">‹</button>';
+        h += '<span id="memo-ym" style="font-size:15px;font-weight:700;">' + memoYear + '年' + (memoMonth + 1) + '月</span>';
+        h += '<button id="memo-next" style="background:none;border:none;font-size:18px;color:#555;cursor:pointer;padding:4px 10px;">›</button>';
         h += '</div>';
-        h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:10px;color:#999;margin-bottom:4px;">';
-        ['日', '一', '二', '三', '四', '五', '六'].forEach(function (w) { h += '<div>' + w + '</div>'; });
+        h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;text-align:center;font-size:11px;color:#999;margin-bottom:6px;">';
+        ['日', '一', '二', '三', '四', '五', '六'].forEach(function (w) { h += '<div style="padding:2px 0;">' + w + '</div>'; });
         h += '</div>';
         var first = new Date(memoYear, memoMonth, 1);
         var startDow = first.getDay();
         var daysInMonth = new Date(memoYear, memoMonth + 1, 0).getDate();
         var todayKey = memoKey(new Date());
+        /* 读有字日期，标点 */
+        var dotMap = {};
+        if (typeof localforage !== 'undefined') {
+            localforage.getItem(MEMO_CAL_KEY).then(function (v) {
+                var map = v && typeof v === 'object' ? v : {};
+                for (var k in map) { if (map[k] && map[k].length) dotMap[k] = true; }
+                var days = body.querySelectorAll('[data-day]');
+                days.forEach(function (el) {
+                    if (dotMap[el.dataset.day]) {
+                        if (!el.querySelector('.memo-dot')) {
+                            var dot = document.createElement('span');
+                            dot.className = 'memo-dot';
+                            dot.style.cssText = 'position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#3d7ea6;';
+                            el.appendChild(dot);
+                        }
+                    }
+                });
+            }).catch(function () {});
+        }
         for (var i = 0; i < startDow; i++) h += '<div></div>';
         for (var dd = 1; dd <= daysInMonth; dd++) {
             var dk = memoYear + '-' + String(memoMonth + 1).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
             var on = dk === memoSel;
             var isToday = dk === todayKey;
-            h += '<div data-day="' + dk + '" style="height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;font-size:12px;' +
+            h += '<div data-day="' + dk + '" style="position:relative;height:38px;display:flex;align-items:center;justify-content:center;border-radius:11px;cursor:pointer;font-size:13px;' +
                 (on ? 'background:#3d7ea6;color:#fff;font-weight:700;' : 'color:#444;') +
-                (isToday && !on ? 'border:1px solid #3d7ea6;' : '') + '">' + dd + '</div>';
+                (isToday && !on ? 'border:1.5px solid #3d7ea6;' : '') +
+                (isToday && !on ? 'color:#3d7ea6;font-weight:600;' : '') + '">' + dd + '</div>';
         }
         h += '</div>';
-        h += '<div id="memo-day-area" style="margin-top:12px;"></div>';
+        h += '<div id="memo-day-area" style="margin-top:14px;"></div>';
         body.innerHTML = h;
         body.querySelector('#memo-prev').addEventListener('click', function () { memoMonth--; if (memoMonth < 0) { memoMonth = 11; memoYear--; } renderMemoCal(body); });
         body.querySelector('#memo-next').addEventListener('click', function () { memoMonth++; if (memoMonth > 11) { memoMonth = 0; memoYear++; } renderMemoCal(body); });
@@ -126,19 +146,7 @@
         });
     }
 
-    /* ============ 召唤沈屿（悬浮球 + 面板） ============ */
-    var ballEl = null;
-    function ensureBall() {
-        if (ballEl && document.body.contains(ballEl)) return ballEl;
-        var b = document.createElement('div');
-        b.id = 'lyh-ball';
-        b.innerHTML = '<div style="position:fixed;right:12px;bottom:74px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3d7ea6,#2c5f8a);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;box-shadow:0 6px 20px rgba(44,95,138,0.5);z-index:300000;border:2px solid rgba(255,255,255,0.4);">🆘</div>';
-        document.body.appendChild(b);
-        ballEl = b;
-        b.addEventListener('click', openSummon);
-        return b;
-    }
-
+    /* ============ 召唤沈屿（收纳区入口 + 面板） ============ */
     var summonEl = null;
     function openSummon() {
         if (summonEl && document.body.contains(summonEl)) { summonEl.style.display = 'flex'; return; }
@@ -191,10 +199,11 @@
 
     /* ============ 启动 ============ */
     function boot() {
-        ensureBall();
-        /* 移除可能残留的旧按钮 */
+        /* 移除可能残留的旧按钮/悬浮球 */
         var oldBtn = document.getElementById('lyh-home-btn');
         if (oldBtn) oldBtn.remove();
+        var oldBall = document.getElementById('lyh-ball');
+        if (oldBall) oldBall.remove();
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
