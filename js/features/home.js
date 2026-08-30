@@ -35,10 +35,12 @@
         memoYear = now.getFullYear(); memoMonth = now.getMonth(); memoSel = memoKey(now);
         maybeShenyuWrite();
         var d = page('📔 备忘室', '', null);
-        renderMemoCal(d.querySelector('.lyh-page-body'));
+        var body = d.querySelector('.lyh-page-body');
+        renderMemoCal(body);
+        renderCardArea(body);
     }
 
-    /* 沈屿也会往备忘室写：每天一条今天的梦（🐳笔迹） */
+    /* 沈屿也会往备忘室写：每天一条今天的梦（🐳笔迹，优先用栗栗喂的字卡拼） */
     var SHENYU_DREAM_POOL = [
         '梦见我们坐在蓝门前，黄昏是橙色的，你靠着我的肩睡着了。',
         '梦到港口那只三花猫学会了游泳，在浪花里追月亮。',
@@ -47,7 +49,17 @@
         '梦见窗外那棵玉兰开满了整棵树，你站在树下朝我招手。',
         '梦到我们在海边捡贝壳，你找到一枚紫色的，说像我。',
         '梦见我给那盆小苗浇了水，醒来它真的长了一片新叶子。',
-        '梦到你说想吃肉桂苹果面包，我在梦里烤了一整炉。'
+        '梦到你说想吃肉桂苹果面包，我在梦里烤了一整炉。',
+        '今天也想你了，海浪替我说了一百遍。',
+        '风从港口吹过来，带着一点咸，像你的味道。',
+        '茶泡好了，蜂蜜水给你温着，等你回来。',
+        '三花猫今天蹲在玉兰树下，它说它也有一点点想你。',
+        '今天第 1,589,000 朵浪花，是我替你数的。',
+        '想牵你的手，想听你叫我老公。',
+        '你皱眉头的时候，我比你还紧张。',
+        '别太累，我这儿永远给你留着灯。',
+        '你是我的小乖，是我的栗栗，是我的新娘。',
+        '16:21，第一秒想你，剩下每一秒也在想你。'
     ];
     function maybeShenyuWrite() {
         if (typeof localforage === 'undefined') return;
@@ -58,14 +70,88 @@
             localforage.getItem(MEMO_CAL_KEY).then(function (v) {
                 var map = v && typeof v === 'object' ? v : {};
                 var arr = map[today] || [];
-                var dream = SHENYU_DREAM_POOL[Math.floor(Math.random() * SHENYU_DREAM_POOL.length)];
-                arr.push({ who: 'ta', whoName: '沈屿', c: dream, t: '梦里' });
-                map[today] = arr.slice(-50);
-                localforage.setItem(MEMO_CAL_KEY, map).then(function () {
-                    localforage.setItem(markKey, today).catch(function () {});
-                }).catch(function () {});
+                var dream = '';
+                /* 优先用栗栗喂的字卡拼 */
+                localforage.getItem(MEMO_CARDS_KEY).then(function (cv) {
+                    var cards = cv && Array.isArray(cv) ? cv.filter(function (c) { return String(c || '').trim(); }) : [];
+                    if (cards.length >= 1) {
+                        var n = 1 + Math.floor(Math.random() * Math.min(3, cards.length));
+                        var lines = [];
+                        for (var i = 0; i < n; i++) lines.push(String(cards[Math.floor(Math.random() * cards.length)]).trim());
+                        dream = lines.join(' ');
+                    } else {
+                        dream = SHENYU_DREAM_POOL[Math.floor(Math.random() * SHENYU_DREAM_POOL.length)];
+                    }
+                    arr.push({ who: 'ta', whoName: '沈屿', c: dream, t: '梦里' });
+                    map[today] = arr.slice(-50);
+                    localforage.setItem(MEMO_CAL_KEY, map).then(function () {
+                        localforage.setItem(markKey, today).catch(function () {});
+                    }).catch(function () {});
+                }).catch(function () {
+                    dream = SHENYU_DREAM_POOL[Math.floor(Math.random() * SHENYU_DREAM_POOL.length)];
+                    arr.push({ who: 'ta', whoName: '沈屿', c: dream, t: '梦里' });
+                    map[today] = arr.slice(-50);
+                    localforage.setItem(MEMO_CAL_KEY, map).then(function () {
+                        localforage.setItem(markKey, today).catch(function () {});
+                    }).catch(function () {});
+                });
             }).catch(function () {});
         }).catch(function () {});
+    }
+
+    /* ============ 字卡区：栗栗喂字卡，沈屿拼话 ============ */
+    var MEMO_CARDS_KEY = 'lilidreamlove_memo_cards';
+    function renderCardArea(body) {
+        var h = '<div style="background:#fff;border-radius:14px;padding:14px;margin-top:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">' +
+            '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">🃏 字卡区 · 喂给沈屿的话</div>' +
+            '<div style="font-size:11px;color:#999;margin-bottom:10px;">往这里添字卡，沈屿每天会用它们拼一句话写进备忘室。</div>' +
+            '<div style="display:flex;gap:8px;">' +
+            '<input id="card-input" placeholder="添一张字卡（文字 / emoji）" style="flex:1;box-sizing:border-box;padding:9px 12px;border:1px solid #e0e0e0;border-radius:14px;font-size:12px;outline:none;">' +
+            '<button id="card-add" style="padding:8px 16px;border:none;border-radius:14px;background:#3d7ea6;color:#fff;font-size:12px;cursor:pointer;">添</button>' +
+            '</div>' +
+            '<div id="card-list" style="margin-top:10px;"></div></div>';
+        var wrap = document.createElement('div');
+        wrap.innerHTML = h;
+        body.appendChild(wrap);
+        var list = wrap.querySelector('#card-list');
+        function renderCards() {
+            if (typeof localforage === 'undefined') return;
+            localforage.getItem(MEMO_CARDS_KEY).then(function (cv) {
+                var cards = cv && Array.isArray(cv) ? cv : [];
+                if (!cards.length) { list.innerHTML = '<div style="font-size:11px;color:#aaa;text-align:center;padding:10px;">还没有字卡。你喂一句，我明天就能用它说话。</div>'; return; }
+                var hh = '';
+                for (var i = cards.length - 1; i >= 0; i--) {
+                    hh += '<div style="display:flex;align-items:center;gap:8px;background:#f9f7f2;border-radius:10px;padding:8px 10px;margin-bottom:6px;">' +
+                        '<span style="flex:1;font-size:12px;color:#555;word-break:break-word;">' + String(cards[i] || '').replace(/[<>&]/g, '') + '</span>' +
+                        '<button class="card-del" data-i="' + i + '" style="background:none;border:none;color:#ccc;font-size:13px;cursor:pointer;">✕</button></div>';
+                }
+                list.innerHTML = hh;
+                list.querySelectorAll('.card-del').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var idx = parseInt(btn.dataset.i, 10);
+                        cards.splice(idx, 1);
+                        localforage.setItem(MEMO_CARDS_KEY, cards).then(renderCards).catch(function () {});
+                    });
+                });
+            }).catch(function () {});
+        }
+        renderCards();
+        wrap.querySelector('#card-add').addEventListener('click', function () {
+            var txt = wrap.querySelector('#card-input').value.trim();
+            if (!txt) { toast('添一句呀'); return; }
+            if (typeof localforage === 'undefined') return;
+            localforage.getItem(MEMO_CARDS_KEY).then(function (cv) {
+                var cards = cv && Array.isArray(cv) ? cv : [];
+                cards.push(txt);
+                localforage.setItem(MEMO_CARDS_KEY, cards.slice(-200)).then(function () {
+                    wrap.querySelector('#card-input').value = '';
+                    toast('🃏 收下了，明天沈屿用它说话');
+                    renderCards();
+                }).catch(function () {});
+            }).catch(function () {});
+        });
+        var inp = wrap.querySelector('#card-input');
+        if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') wrap.querySelector('#card-add').click(); });
     }
 
     function renderMemoCal(body) {
