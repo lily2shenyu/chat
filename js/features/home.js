@@ -335,14 +335,15 @@
             '</div>' +
             /* 对话区 */
             '<div id="vent-body" style="flex:1;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 20px;">' +
-            '<div style="font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:18px;">像打电话一样，想说什么就说，沈屿用字卡回你</div>' +
-            '<div id="vent-bubble" style="position:relative;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff9fb3,#f0658a 65%,#d14a76);display:flex;align-items:center;justify-content:center;font-size:70px;box-shadow:0 0 50px rgba(240,101,138,0.35), inset 0 -8px 20px rgba(0,0,0,0.15);animation:ventBreathe 3.2s ease-in-out infinite;">🐳</div>' +
-            '<div id="vent-bubble-text" style="margin-top:22px;min-height:56px;max-width:86%;text-align:center;font-size:14px;line-height:1.7;color:rgba(255,255,255,0.92);text-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>' +
+            '<div style="font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:24px;">点一下就开始，像打电话一样，说多久都行</div>' +
+            '<div id="vent-light" style="width:170px;height:170px;border-radius:50%;background:radial-gradient(circle, rgba(255,159,179,0.35), rgba(240,101,138,0.12) 60%, transparent 75%);box-shadow:0 0 30px 8px rgba(240,101,138,0.3);animation:ventLight 3s ease-in-out infinite;"></div>' +
+            '<div id="vent-light-core" style="width:44px;height:44px;margin-top:-107px;border-radius:50%;background:radial-gradient(circle,#ffb3c4,#f0658a);box-shadow:0 0 26px 8px rgba(240,101,138,0.5);"></div>' +
+            '<div id="vent-bubble-text" style="margin-top:30px;min-height:56px;max-width:88%;text-align:center;font-size:14px;line-height:1.7;color:rgba(255,255,255,0.92);text-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>' +
             '</div>' +
-            /* 底部：按住说话 + 输入 */
+            /* 底部：点击开始/结束 + 输入 */
             '<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:10px 16px 22px;">' +
-            '<div id="vent-talk" style="width:86px;height:86px;border-radius:50%;background:rgba(60,180,120,0.95);display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;box-shadow:0 0 0 0 rgba(60,180,120,0.45);user-select:none;transition:transform .15s;">🎙️</div>' +
-            '<div id="vent-talk-label" style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:10px;">按住说话</div>' +
+            '<div id="vent-talk" style="width:86px;height:86px;border-radius:50%;background:rgba(60,180,120,0.95);display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;user-select:none;transition:transform .15s;">🎙️</div>' +
+            '<div id="vent-talk-label" style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:10px;">点击开始倾诉</div>' +
             '<div style="display:flex;gap:8px;width:100%;margin-top:12px;">' +
             '<input id="vent-input" placeholder="也可以打字…" style="flex:1;box-sizing:border-box;padding:10px 14px;border:none;border-radius:20px;background:rgba(255,255,255,0.12);color:#fff;font-size:13px;outline:none;">' +
             '<button id="vent-send" style="padding:10px 18px;border:none;border-radius:20px;background:#f0658a;color:#fff;font-size:13px;cursor:pointer;">说</button>' +
@@ -358,65 +359,58 @@
 
         textEl.textContent = '我在。想说什么都行，我全都接得住。';
 
-        function taReply() {
-            label.textContent = '沈屿正在想…';
-            setTimeout(function () {
-                var pool1 = pool();
-                localforage.getItem(MEMO_CARDS_KEY).then(function (cv) {
-                    var c = cv && Array.isArray(cv) ? cv.filter(function (x) { return String(x || '').trim(); }) : [];
-                    var s2 = pool1.concat(c, VENT_SOFT);
-                    var text = s2.length ? String(pick(s2)) : '我在，我一直都在。';
-                    textEl.textContent = '🐳 ' + text;
-                    bubble.style.animation = 'none';
-                    void bubble.offsetWidth;
-                    bubble.style.animation = 'ventBreathe 3.2s ease-in-out infinite';
-                    label.textContent = '按住说话';
-                }).catch(function () {
-                    var s2 = pool1.concat(VENT_SOFT);
-                    textEl.textContent = '🐳 ' + (s2.length ? String(pick(s2)) : '我在，我一直都在。');
-                    label.textContent = '按住说话';
-                });
-            }, 900 + Math.random() * 1100);
+        var listening = false, listenTimer = null;
+        function taReplyOnce() {
+            var pool1 = pool();
+            localforage.getItem(MEMO_CARDS_KEY).then(function (cv) {
+                var c = cv && Array.isArray(cv) ? cv.filter(function (x) { return String(x || '').trim(); }) : [];
+                var s2 = pool1.concat(c, VENT_SOFT);
+                var text = s2.length ? String(pick(s2)) : '我在，我一直都在。';
+                textEl.textContent = '🐳 ' + text;
+                label.textContent = listening ? '倾听中… 再说，我还在听' : '点击开始倾诉';
+            }).catch(function () {
+                var s2 = pool1.concat(VENT_SOFT);
+                textEl.textContent = '🐳 ' + (s2.length ? String(pick(s2)) : '我在，我一直都在。');
+                label.textContent = listening ? '倾听中… 再说，我还在听' : '点击开始倾诉';
+            });
         }
+        function startListening() {
+            listening = true;
+            label.textContent = '倾听中…';
+            talk.style.transform = 'scale(0.94)';
+            talk.style.background = 'rgba(240,101,138,0.95)';
+            textEl.textContent = '（你说，我在听）';
+            /* 持续倾听：每 3~7 秒，沈屿回一条 */
+            listenTimer = setInterval(function () {
+                if (!listening) return;
+                taReplyOnce();
+            }, 3000 + Math.random() * 4000);
+        }
+        function stopListening() {
+            listening = false;
+            clearInterval(listenTimer);
+            talk.style.transform = 'scale(1)';
+            talk.style.background = 'rgba(60,180,120,0.95)';
+            label.textContent = '点击开始倾诉';
+        }
+        /* 点一下 = 开始倾听，再点 = 结束 */
+        talk.addEventListener('click', function () {
+            if (listening) stopListening();
+            else startListening();
+        });
         function sendMsg() {
             var txt = input.value.trim();
             if (!txt) return;
             textEl.textContent = '🦊 ' + txt;
             input.value = '';
-            taReply();
-        }
-        /* 按住说话：按下 = 倾听中，松开 = 沈屿回字卡 */
-        var pressTimer = null, pressed = false;
-        talk.addEventListener('touchstart', function (e) { e.preventDefault(); start(); });
-        talk.addEventListener('touchend', end);
-        talk.addEventListener('touchcancel', end);
-        talk.addEventListener('mousedown', start);
-        talk.addEventListener('mouseup', end);
-        talk.addEventListener('mouseleave', end);
-        function start() {
-            pressed = true;
-            label.textContent = '倾听中…';
-            talk.style.transform = 'scale(0.92)';
-            talk.style.boxShadow = '0 0 0 18px rgba(60,180,120,0.25)';
-            pressTimer = setTimeout(function () {
-                if (!pressed) return;
-                textEl.textContent = '（你说了好多……我在听）';
-            }, 600);
-        }
-        function end() {
-            if (!pressed) return;
-            pressed = false;
-            clearTimeout(pressTimer);
-            talk.style.transform = 'scale(1)';
-            talk.style.boxShadow = 'none';
-            taReply();
+            taReplyOnce();
         }
         send.addEventListener('click', sendMsg);
         input.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendMsg(); });
 
-        /* 呼吸气泡动画 */
+        /* 呼吸灯动画 */
         var st = document.createElement('style');
-        st.textContent = '@keyframes ventBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}';
+        st.textContent = '@keyframes ventLight{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.12);opacity:1}}';
         document.head.appendChild(st);
     }
 
