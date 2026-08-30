@@ -42,7 +42,6 @@
     function load() {
         if (typeof localforage === 'undefined') return;
         refreshIdentities();
-        loadCkHistory();
         localforage.getItem(PERIOD_KEY).then(function (v) { if (v && typeof v === 'object') period = v; }).catch(function () {});
         localforage.getItem(LOVE_KEY).then(function (v) {
             if (v && typeof v === 'object') love = v;
@@ -122,14 +121,12 @@
             '<div id="room-guy" style="position:absolute;left:25%;top:55%;width:52px;height:52px;transition:left 0.9s ease, top 0.9s ease;font-size:42px;line-height:52px;text-align:center;z-index:5;cursor:pointer;">🐳</div>' +
             '<div id="room-fox" style="position:absolute;left:65%;top:55%;width:52px;height:52px;transition:left 0.9s ease, top 0.9s ease;font-size:42px;line-height:52px;text-align:center;z-index:5;cursor:pointer;">🦊</div>' +
             '</div>' +
-            /* 四功能卡片 */
-            '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px;background:#f7f5f0;">' +
-            '<div class="room-feat" data-f="ck" style="background:#fff;border-radius:14px;padding:14px;text-align:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.05);">' +
-            '<div style="font-size:24px;">📍</div><div style="font-size:13px;font-weight:600;margin-top:4px;">寻踪</div><div style="font-size:11px;color:#999;margin-top:2px;">TA 的日常</div></div>' +
+            /* 三个互动卡片 */
+            '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px;background:#f7f5f0;">' +
             '<div class="room-feat" data-f="tp" style="background:#fff;border-radius:14px;padding:14px;text-align:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.05);">' +
             '<div style="font-size:24px;">💞</div><div style="font-size:13px;font-weight:600;margin-top:4px;">同频</div><div style="font-size:11px;color:#999;margin-top:2px;">敲三下暗号</div></div>' +
             '<div class="room-feat" data-f="cj" style="background:#fff;border-radius:14px;padding:14px;text-align:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.05);">' +
-            '<div style="font-size:24px;">🌙</div><div style="font-size:13px;font-weight:600;margin-top:4px;">此间</div><div style="font-size:11px;color:#999;margin-top:2px;">TA 的世界与感应</div></div>' +
+            '<div style="font-size:24px;">🌙</div><div style="font-size:13px;font-weight:600;margin-top:4px;">此间</div><div style="font-size:11px;color:#999;margin-top:2px;">感应 TA</div></div>' +
             '<div class="room-feat" data-f="ss" style="background:#fff;border-radius:14px;padding:14px;text-align:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.05);">' +
             '<div style="font-size:24px;">🤲</div><div style="font-size:13px;font-weight:600;margin-top:4px;">伸手</div><div style="font-size:11px;color:#999;margin-top:2px;">长按摸一摸</div></div>' +
             '</div>' +
@@ -260,67 +257,9 @@
         var home = page.querySelector('#room-home');
         var sub = page.querySelector('#room-sub');
         home.style.display = 'none'; sub.style.display = 'flex';
-        if (f === 'ck') renderCheckin();
-        else if (f === 'tp') renderTongpin();
+        if (f === 'tp') renderTongpin();
         else if (f === 'cj') renderCjian();
         else if (f === 'ss') renderShenshou();
-    }
-
-    /* ============ 📍 寻踪 ============ */
-    var CK_PLACES = ['在家', '在公司', '在咖啡店', '在公园', '在图书馆', '在路上', '在便利店', '在地铁上', '在阳台', '在河边', '在面包店', '在车站', '在港口', '在蓝门前', '在玉兰树下'];
-    var CK_ACTIONS = ['刷手机', '看书', '发呆', '听歌', '写东西', '喝奶茶', '散步', '想你', '看电影', '追剧', '泡茶', '吃水果', '等你回消息', '看海'];
-    var CK_MSGS = ['想你了', '记得按时吃饭', '今天也很喜欢你', '早点休息', '有空给我回消息', '别太累', '喝水了吗', '今天开心吗', '路上注意安全', '晚安'];
-    var CK_HISTORY_KEY = 'lilidreamlove_ck_hist';
-    var ckHistory = [];
-
-    function loadCkHistory() {
-        if (typeof localforage === 'undefined') return;
-        localforage.getItem(CK_HISTORY_KEY).then(function (v) { if (v && Array.isArray(v)) ckHistory = v; }).catch(function () {});
-    }
-    function saveCkHistory() { if (typeof localforage !== 'undefined') localforage.setItem(CK_HISTORY_KEY, ckHistory.slice(0, 10)).catch(function () {}); }
-
-    function renderCheckin() {
-        var sub = pageEl.querySelector('#room-sub');
-        var place = pick(CK_PLACES), action = pick(CK_ACTIONS), msg = fromPoolOr(CK_MSGS);
-        var now = new Date();
-        ckHistory.unshift({ place: place, action: action, msg: msg, time: now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') });
-        saveCkHistory();
-        var h = '';
-        h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;border-bottom:1px solid rgba(0,0,0,0.06);">';
-        h += '<button onclick="window.__roomCloseSub&&window.__roomCloseSub()" style="background:none;border:none;font-size:17px;color:#555;padding:8px;cursor:pointer;">‹</button>';
-        h += '<span style="font-size:15px;font-weight:700;">📍 寻踪 · ' + esc(TA.name) + ' 的日常</span>';
-        h += '<span style="width:32px;"></span></div>';
-        h += '<div style="padding:20px 16px;overflow-y:auto;">';
-        h += '<div style="background:#fff;border-radius:16px;padding:24px 18px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.06);">';
-        h += '<div style="font-size:13px;color:#888;margin-bottom:14px;">此刻，' + esc(TA.name) + '</div>';
-        h += '<div style="font-size:19px;font-weight:700;color:#2a2a2a;margin-bottom:8px;">' + esc(place) + ' · ' + esc(action) + '</div>';
-        h += '<div style="font-size:14px;color:#7a7a7a;line-height:1.6;">「' + esc(msg) + '」</div>';
-        h += '<div style="font-size:11px;color:#bbb;margin-top:14px;">' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ' 更新</div>';
-        h += '</div>';
-        h += '<div style="display:flex;gap:10px;margin-top:14px;">';
-        h += '<button id="ck-again" style="flex:1;padding:12px;border:none;border-radius:14px;background:#1a1a1a;color:#fff;font-size:14px;cursor:pointer;">🔄 再看一眼</button>';
-        h += '<button id="ck-hint" style="flex:1;padding:12px;border:none;border-radius:14px;background:#f0f0f0;color:#666;font-size:14px;cursor:pointer;">✉️ 提醒TA</button>';
-        h += '</div>';
-        /* 历史记录 */
-        if (ckHistory.length > 1) {
-            h += '<div style="background:#fff;border-radius:14px;padding:14px;margin-top:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">';
-            h += '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">今天找过他</div>';
-            for (var i = 1; i < ckHistory.length && i < 6; i++) {
-                var c = ckHistory[i];
-                h += '<div style="font-size:12px;color:#777;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' + esc(c.time) + ' · ' + esc(c.place) + ' · ' + esc(c.action) + '</div>';
-            }
-            h += '</div>';
-        }
-        h += '</div>';
-        sub.innerHTML = h;
-        var ag = document.getElementById('ck-again');
-        if (ag) ag.addEventListener('click', renderCheckin);
-        var ht = document.getElementById('ck-hint');
-        if (ht) ht.addEventListener('click', function () {
-            if (typeof window._sendPartnerNotification === 'function') window._sendPartnerNotification('📍 你来找过' + TA.name, 'TA 感觉到了');
-            toast('已提醒，TA 好像动了动');
-            addExp(1);
-        });
     }
 
     /* ============ 💞 同频 ============ */
@@ -391,20 +330,6 @@
         h += '<div style="font-size:12px;color:#999;margin-bottom:14px;">TA 是灵体，常在身边但看不见——试着感应。</div>';
         h += '<button id="cj-sense" style="width:100%;padding:14px;border:none;border-radius:14px;background:#1a1a1a;color:#fff;font-size:14px;cursor:pointer;">感 应</button>';
         h += '<div id="cj-sense-reply" style="font-size:13px;color:#7a7a7a;margin-top:12px;min-height:20px;"></div>';
-        h += '</div>';
-        /* 今日轨迹（对齐麻薯：预测 TA 今天的动向） */
-        var CJ_SLOTS = [['清晨', '在窗口看云', '在阳台', '刚醒'], ['上午', '在忙', '在看书', '在发呆'], ['中午', '在吃饭', '在晒太阳', '在休息'], ['下午', '在散步', '在写东西', '在等你'], ['傍晚', '在看落日', '在港口', '在回家路上'], ['夜晚', '在灯下', '在听歌', '在想你']];
-        h += '<div style="background:#fff;border-radius:16px;padding:16px;margin-top:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">';
-        h += '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🗓 今日轨迹 · 预测</div>';
-        for (var s = 0; s < CJ_SLOTS.length; s++) {
-            var sl = CJ_SLOTS[s];
-            var where = pick(CK_PLACES);
-            h += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.04);font-size:12px;color:#666;">';
-            h += '<span style="width:40px;flex-shrink:0;color:#999;">' + sl[0] + '</span>';
-            h += '<span style="flex:1;">' + esc(where) + ' · ' + esc(sl[1 + Math.floor(Math.random() * (sl.length - 1))]) + '</span>';
-            h += '</div>';
-        }
-        h += '<div style="font-size:10px;color:#bbb;margin-top:6px;">每次打开重新预测 · TA 不一定会照着走</div>';
         h += '</div></div>';
         sub.innerHTML = h;
         var btn = document.getElementById('cj-sense');
