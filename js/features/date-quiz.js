@@ -335,7 +335,9 @@
             body.innerHTML = '<div style="text-align:center;padding:30px 0;color:var(--text-secondary);font-size:13px;">我还没寄出问题～<br>等我在聊天里问你吧，或先答下面的题库～</div>';
         } else {
             body.innerHTML = asked.map(function (a, i) {
-                var ans = answers[i] ? '<div style="font-size:12px;color:var(--accent-color);margin-top:4px;">你的回答：' + answers[i].replace(/[<>&]/g, '') + '</div>' : '';
+                var av = answers[i];
+                if (av && typeof av === 'object') av = av.a || '';
+                var ans = av ? '<div style="font-size:12px;color:var(--accent-color);margin-top:4px;">你的回答：' + String(av).replace(/[<>&]/g, '') + '</div>' : '';
                 return '<div style="padding:12px;border:1px solid var(--border-color);border-radius:14px;margin-bottom:10px;background:var(--primary-bg);font-size:13px;line-height:1.6;">' + a.q.replace(/[<>&]/g, '') + ans +
                     '<div style="display:flex;gap:8px;margin-top:8px;"><input class="sq-ans" data-i="' + i + '" placeholder="回答我呀…" style="flex:1;padding:8px 10px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;outline:none;">' +
                     '<button class="sq-save" data-i="' + i + '" style="padding:8px 12px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:12px;cursor:pointer;">回答</button></div></div>';
