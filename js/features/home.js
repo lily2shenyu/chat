@@ -1,11 +1,10 @@
 /* =========================================================
- * 栗屿海 · 小手机桌面（home）
- * 主界面 = 桌面：壁纸 + 状态条 + 翻页图标网格 + dock
- * 点哪个模块进哪个；备忘室大卡片；召唤沈屿全局悬浮球
+ * 栗屿海 · 底部栏 + 备忘室（日历日记）+ 召唤沈屿
+ * - 底部 dock：聊天/朋友圈/房间/备忘室/召唤，可收起
+ * - 备忘室：日历选日期 → 写那天的日记（双人）
+ * - 召唤沈屿：悬浮球 + 拥抱呼吸引导（保留）
  * ========================================================= */
 (function () {
-    var homeEl = null;
-
     function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random() * arr.length)] : ''; }
     function pool() {
         try {
@@ -16,162 +15,182 @@
         return [];
     }
     function fromPoolOr(fallback) { var p = pool(); return p.length >= 1 ? String(pick(p)).trim() : pick(fallback); }
-
-    /* 浪花数：基于日期，每天递增 */
-    var BASE = 1589000;
-    function waveCount() {
-        var d = new Date();
-        var dayNum = Math.floor((d - new Date(2026, 7, 30)) / 86400000); // 2026-08-30起
-        var n = BASE + dayNum * 2 + Math.floor(Math.random() * 3);
-        return n.toLocaleString('en-US').replace(/,/g, ',');
+    function toast(msg) {
+        if (typeof window.toast === 'function') { window.toast(msg); return; }
+        var t = document.createElement('div');
+        t.textContent = msg;
+        t.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;z-index:400001;';
+        document.body.appendChild(t);
+        setTimeout(function () { t.remove(); }, 2200);
     }
 
-    /* ============ 模块定义 ============ */
-    var PAGE1 = [
-        { id: 'chat', icon: '💬', name: '聊天', act: function () { hideHome(); } },
-        { id: 'feed', icon: '📖', name: '朋友圈', act: function () { hideHome(); if (window.openFeed) window.openFeed(); } },
-        { id: 'room', icon: '🏠', name: '房间', act: function () { hideHome(); if (window.openRoom) window.openRoom(); } },
-        { id: 'cards', icon: '🃏', name: '字卡库', act: function () { hideHome(); openCardsLib(); } },
-        { id: 'date', icon: '💘', name: '约会问答', act: function () { hideHome(); if (window.openDateQuiz) window.openDateQuiz(); else toast('约会问答未就绪'); } },
-        { id: 'envelope', icon: '✉️', name: '信封', act: function () { hideHome(); if (window.openEnvelopeQuick) window.openEnvelopeQuick(); else toast('信封未就绪'); } },
-        { id: 'gift', icon: '🎁', name: '礼物', act: function () { hideHome(); openGift(); } },
-        { id: 'code', icon: '🔑', name: '暗号区', act: function () { hideHome(); openCodePage(); } },
-        { id: 'state', icon: '🌊', name: '状态栏', act: function () { hideHome(); openStatePage(); } },
-        { id: 'lock', icon: '🌙', name: '时间锁', act: function () { hideHome(); openLockPage(); } }
-    ];
-    var PAGE2 = [
-        { id: 'pixel', icon: '🏡', name: '像素小屋', act: function () { hideHome(); toast('像素小屋：建设中，等我'); } },
-        { id: 'bottle', icon: '🍾', name: '漂流瓶', act: function () { hideHome(); toast('漂流瓶：下次潮水带来'); } },
-        { id: 'divine', icon: '🔮', name: '每日一签', act: function () { hideHome(); openDivine(); } }
-    ];
-
-    /* ============ 构建桌面 ============ */
-    function ensureHome() {
-        if (homeEl && document.body.contains(homeEl)) return homeEl;
+    /* ============ 底部 dock（可收起） ============ */
+    var dockEl = null;
+    function ensureDock() {
+        if (dockEl && document.body.contains(dockEl)) return dockEl;
         var d = document.createElement('div');
-        d.id = 'lyh-home';
-        d.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;color:#fff;';
+        d.id = 'lyh-dock';
+        d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:200000;background:rgba(255,255,255,0.96);border-top:1px solid rgba(0,0,0,0.08);box-shadow:0 -4px 20px rgba(0,0,0,0.1);border-radius:18px 18px 0 0;padding:8px 10px 10px;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:4px;';
         d.innerHTML =
-            '<div style="position:absolute;inset:0;background:linear-gradient(180deg,#2c5f8a 0%,#4a8fae 45%,#7fb8cf 100%);"></div>' +
-            '<div style="position:absolute;inset:0;background:radial-gradient(60% 40% at 80% 15%,rgba(255,255,255,0.12),transparent 60%);"></div>' +
-            '<div style="position:absolute;left:16px;bottom:90px;font-size:22px;opacity:0.35;">🌊</div>' +
-            '<div style="position:absolute;right:30px;bottom:120px;font-size:18px;opacity:0.25;">🌸</div>' +
-            /* 状态条 */
-            '<div style="position:relative;padding:14px 16px 6px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">' +
-            '<div style="font-size:15px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,0.3);">💙 栗屿海</div>' +
-            '<div style="font-size:12px;opacity:0.9;text-shadow:0 1px 4px rgba(0,0,0,0.3);">' + (new Date().getMonth() + 1) + '月' + new Date().getDate() + '日 · 浪花第 ' + waveCount() + ' 朵</div>' +
+            '<div style="display:flex;justify-content:center;">' +
+            '<button id="lyh-dock-fold" style="background:none;border:none;font-size:12px;color:#aaa;cursor:pointer;padding:2px 10px;">⌄ 收起</button>' +
             '</div>' +
-            /* 翻页区 */
-            '<div id="lyh-pages" style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:center;padding:6px 12px;">' +
-            '<div id="lyh-page-wrap" style="display:flex;transition:transform .35s ease;height:100%;align-items:center;">' +
-            '<div class="lyh-page" style="flex:0 0 100%;display:grid;grid-template-columns:repeat(4,1fr);gap:14px 8px;align-content:center;padding:0 4px;box-sizing:border-box;"></div>' +
-            '<div class="lyh-page" style="flex:0 0 100%;display:grid;grid-template-columns:repeat(4,1fr);gap:14px 8px;align-content:center;padding:0 4px;box-sizing:border-box;"></div>' +
-            '</div>' +
-            /* 备忘室大卡（浮在首页底部） */
-            '<div id="lyh-memo-card" style="position:absolute;left:16px;right:16px;bottom:8px;background:rgba(255,255,255,0.92);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;color:#2a2a2a;box-shadow:0 6px 20px rgba(0,0,0,0.25);">' +
-            '<div style="font-size:30px;">📔</div>' +
-            '<div style="flex:1;"><div style="font-size:14px;font-weight:700;">备忘室</div><div style="font-size:11px;color:#888;">双人日记 · 只有我们俩</div></div>' +
-            '<div style="font-size:18px;color:#888;">›</div>' +
-            '</div>' +
-            '</div>' +
-            /* 翻页点 */
-            '<div style="position:relative;display:flex;justify-content:center;gap:6px;padding:6px 0 2px;flex-shrink:0;">' +
-            '<span class="lyh-dot" data-p="0" style="width:7px;height:7px;border-radius:50%;background:#fff;opacity:1;"></span>' +
-            '<span class="lyh-dot" data-p="1" style="width:7px;height:7px;border-radius:50%;background:#fff;opacity:0.35;"></span>' +
-            '</div>' +
-            /* dock */
-            '<div style="position:relative;flex-shrink:0;display:flex;justify-content:center;gap:22px;padding:10px 0 16px;">' +
-            '<div class="lyh-dock" data-m="chat" style="width:52px;height:52px;border-radius:16px;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.2);">💬</div>' +
-            '<div class="lyh-dock" data-m="feed" style="width:52px;height:52px;border-radius:16px;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.2);">📖</div>' +
-            '<div class="lyh-dock" data-m="room" style="width:52px;height:52px;border-radius:16px;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.2);">🏠</div>' +
+            '<div style="display:flex;justify-content:space-around;align-items:center;">' +
+            '<div class="lyh-dock-item" data-m="chat" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 8px;"><span style="font-size:20px;">💬</span><span style="font-size:10px;color:#666;">聊天</span></div>' +
+            '<div class="lyh-dock-item" data-m="feed" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 8px;"><span style="font-size:20px;">📖</span><span style="font-size:10px;color:#666;">朋友圈</span></div>' +
+            '<div class="lyh-dock-item" data-m="room" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 8px;"><span style="font-size:20px;">🏠</span><span style="font-size:10px;color:#666;">房间</span></div>' +
+            '<div class="lyh-dock-item" data-m="memo" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 8px;"><span style="font-size:20px;">📔</span><span style="font-size:10px;color:#666;">备忘室</span></div>' +
+            '<div class="lyh-dock-item" data-m="summon" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 8px;"><span style="font-size:20px;">🆘</span><span style="font-size:10px;color:#666;">召唤</span></div>' +
             '</div>';
         document.body.appendChild(d);
-        homeEl = d;
-
-        /* 渲染图标 */
-        var pages = d.querySelectorAll('.lyh-page');
-        PAGE1.forEach(function (m, i) {
-            var el = document.createElement('div');
-            el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 2px;">' +
-                '<div style="width:54px;height:54px;border-radius:16px;background:rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 3px 12px rgba(0,0,0,0.22);">' + m.icon + '</div>' +
-                '<div style="font-size:11px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.4);">' + m.name + '</div></div>';
-            el.addEventListener('click', m.act);
-            pages[0].appendChild(el);
-        });
-        PAGE2.forEach(function (m, i) {
-            var el = document.createElement('div');
-            el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 2px;">' +
-                '<div style="width:54px;height:54px;border-radius:16px;background:rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 3px 12px rgba(0,0,0,0.22);">' + m.icon + '</div>' +
-                '<div style="font-size:11px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.4);">' + m.name + '</div></div>';
-            el.addEventListener('click', m.act);
-            pages[1].appendChild(el);
-        });
-
-        /* 翻页 */
-        var curPage = 0;
-        d.querySelectorAll('.lyh-dot').forEach(function (dot) {
-            dot.addEventListener('click', function () {
-                curPage = parseInt(dot.dataset.p, 10);
-                d.querySelector('#lyh-page-wrap').style.transform = 'translateX(-' + (curPage * 100) + '%)';
-                d.querySelectorAll('.lyh-dot').forEach(function (dd) { dd.style.opacity = dd === dot ? '1' : '0.35'; });
+        dockEl = d;
+        d.querySelector('#lyh-dock-fold').addEventListener('click', foldDock);
+        d.querySelectorAll('.lyh-dock-item').forEach(function (it) {
+            it.addEventListener('click', function () {
+                var m = it.dataset.m;
+                if (m === 'chat') { unfoldDock(); }
+                else if (m === 'feed') { if (window.openFeed) window.openFeed(); }
+                else if (m === 'room') { if (window.openRoom) window.openRoom(); }
+                else if (m === 'memo') { openMemoPage(); }
+                else if (m === 'summon') { openSummon(); }
             });
         });
-        /* 左滑右滑 */
-        var sx = null;
-        d.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
-        d.addEventListener('touchend', function (e) {
-            if (sx === null) return;
-            var dx = e.changedTouches[0].clientX - sx;
-            if (dx < -50 && curPage < 1) { curPage++; d.querySelector('#lyh-page-wrap').style.transform = 'translateX(-100%)'; }
-            else if (dx > 50 && curPage > 0) { curPage--; d.querySelector('#lyh-page-wrap').style.transform = 'translateX(0)'; }
-            d.querySelectorAll('.lyh-dot').forEach(function (dd) { dd.style.opacity = parseInt(dd.dataset.p, 10) === curPage ? '1' : '0.35'; });
-            sx = null;
-        }, { passive: true });
-
-        /* dock */
-        d.querySelectorAll('.lyh-dock').forEach(function (dk) {
-            dk.addEventListener('click', function () {
-                var m = dk.dataset.m;
-                if (m === 'chat') hideHome();
-                else if (m === 'feed') { hideHome(); if (window.openFeed) window.openFeed(); }
-                else if (m === 'room') { hideHome(); if (window.openRoom) window.openRoom(); }
-            });
-        });
-        /* 备忘室大卡 */
-        d.querySelector('#lyh-memo-card').addEventListener('click', function () { hideHome(); openMemoPage(); });
-
-        ensureFloatingBall();
         return d;
     }
-
-    function showHome() { var d = ensureHome(); d.style.display = 'flex'; }
-    function hideHome() { var d = homeEl; if (d) d.style.display = 'none'; }
-    window.showHome = showHome;
-
-    /* ============ 聊天顶部「🏠」 ============ */
-    function bindHomeBtn() {
-        var btn = document.getElementById('lyh-home-btn');
-        if (!btn) {
-            /* 在 header-actions 前插一个 */
-            var ha = document.querySelector('.header-actions');
-            if (ha) {
-                btn = document.createElement('button');
-                btn.id = 'lyh-home-btn';
-                btn.innerHTML = '🏠';
-                btn.style.cssText = 'background:none;border:none;font-size:16px;cursor:pointer;padding:2px 6px;color:var(--text-primary);';
-                ha.insertBefore(btn, ha.firstChild);
-            }
+    function foldDock() {
+        var d = dockEl;
+        if (!d) return;
+        var body = d.querySelector('div:nth-child(2)');
+        var fold = d.querySelector('#lyh-dock-fold');
+        if (body.style.display === 'none') {
+            body.style.display = 'flex';
+            fold.textContent = '⌄ 收起';
+            d.style.paddingBottom = '10px';
+        } else {
+            body.style.display = 'none';
+            fold.textContent = '⌃ 展开';
+            d.style.paddingBottom = '4px';
         }
-        if (btn) btn.addEventListener('click', showHome);
+    }
+    function unfoldDock() {
+        var d = ensureDock();
+        var body = d.querySelector('div:nth-child(2)');
+        var fold = d.querySelector('#lyh-dock-fold');
+        if (body) body.style.display = 'flex';
+        if (fold) fold.textContent = '⌄ 收起';
+        if (d) d.style.paddingBottom = '10px';
+    }
+    window.unfoldDock = unfoldDock;
+
+    /* ============ 备忘室 · 日历日记 ============ */
+    var MEMO_CAL_KEY = 'lilidreamlove_memo_cal';
+    var memoYear = 0, memoMonth = 0, memoSel = '';
+
+    function memoKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+    function openMemoPage() {
+        var now = new Date();
+        memoYear = now.getFullYear(); memoMonth = now.getMonth(); memoSel = memoKey(now);
+        var d = page('📔 备忘室', '', null);
+        renderMemoCal(d.querySelector('.lyh-page-body'));
     }
 
-    /* ============ 悬浮球：召唤沈屿 ============ */
+    function renderMemoCal(body) {
+        var h = '';
+        h += '<div style="background:#fff;border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">';
+        h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
+        h += '<button id="memo-prev" style="background:none;border:none;font-size:16px;color:#555;cursor:pointer;padding:4px 8px;">‹</button>';
+        h += '<span id="memo-ym" style="font-size:14px;font-weight:700;">' + memoYear + '年' + (memoMonth + 1) + '月</span>';
+        h += '<button id="memo-next" style="background:none;border:none;font-size:16px;color:#555;cursor:pointer;padding:4px 8px;">›</button>';
+        h += '</div>';
+        h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:10px;color:#999;margin-bottom:4px;">';
+        ['日', '一', '二', '三', '四', '五', '六'].forEach(function (w) { h += '<div>' + w + '</div>'; });
+        h += '</div>';
+        var first = new Date(memoYear, memoMonth, 1);
+        var startDow = first.getDay();
+        var daysInMonth = new Date(memoYear, memoMonth + 1, 0).getDate();
+        var todayKey = memoKey(new Date());
+        for (var i = 0; i < startDow; i++) h += '<div></div>';
+        for (var dd = 1; dd <= daysInMonth; dd++) {
+            var dk = memoYear + '-' + String(memoMonth + 1).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+            var on = dk === memoSel;
+            var isToday = dk === todayKey;
+            h += '<div data-day="' + dk + '" style="height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;font-size:12px;' +
+                (on ? 'background:#3d7ea6;color:#fff;font-weight:700;' : 'color:#444;') +
+                (isToday && !on ? 'border:1px solid #3d7ea6;' : '') + '">' + dd + '</div>';
+        }
+        h += '</div>';
+        h += '<div id="memo-day-area" style="margin-top:12px;"></div>';
+        body.innerHTML = h;
+        body.querySelector('#memo-prev').addEventListener('click', function () { memoMonth--; if (memoMonth < 0) { memoMonth = 11; memoYear--; } renderMemoCal(body); });
+        body.querySelector('#memo-next').addEventListener('click', function () { memoMonth++; if (memoMonth > 11) { memoMonth = 0; memoYear++; } renderMemoCal(body); });
+        body.querySelectorAll('[data-day]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                memoSel = el.dataset.day;
+                renderMemoCal(body);
+            });
+        });
+        renderMemoDay(body);
+    }
+
+    function renderMemoDay(body) {
+        var area = body.querySelector('#memo-day-area');
+        var d = memoSel.split('-');
+        var title = parseInt(d[1], 10) + '月' + parseInt(d[2], 10) + '日';
+        var h = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+            '<span style="font-size:13px;font-weight:700;">' + title + '</span>' +
+            '<span style="font-size:11px;color:#999;">只有我们俩</span></div>' +
+            '<div id="memo-entries"></div>' +
+            '<div style="display:flex;gap:8px;margin-top:8px;">' +
+            '<input id="memo-input" placeholder="写一句（悄悄话 / 梦 / 日子）" style="flex:1;box-sizing:border-box;padding:9px 12px;border:1px solid #e0e0e0;border-radius:14px;font-size:12px;outline:none;">' +
+            '<button id="memo-save" style="padding:8px 16px;border:none;border-radius:14px;background:#1a1a1a;color:#fff;font-size:12px;cursor:pointer;">写</button>' +
+            '</div>';
+        area.innerHTML = h;
+        var entries = area.querySelector('#memo-entries');
+        function render() {
+            if (typeof localforage === 'undefined') return;
+            localforage.getItem(MEMO_CAL_KEY).then(function (v) {
+                var map = v && typeof v === 'object' ? v : {};
+                var arr = map[memoSel] || [];
+                if (!arr.length) { entries.innerHTML = '<div style="font-size:12px;color:#aaa;text-align:center;padding:16px;">这一天还没有字。留一句吧。</div>'; return; }
+                var hh = '';
+                for (var i = arr.length - 1; i >= 0; i--) {
+                    var m = arr[i];
+                    hh += '<div style="background:#f9f7f2;border-radius:12px;padding:10px 12px;margin-bottom:8px;">' +
+                        '<div style="font-size:10px;color:#aaa;margin-bottom:3px;">' + (m.who === 'ta' ? '🐳 ' + m.whoName : '🦊 ' + m.whoName) + ' · ' + m.t + '</div>' +
+                        '<div style="font-size:13px;color:#444;white-space:pre-wrap;line-height:1.6;">' + String(m.c || '').replace(/[<>&]/g, '') + '</div></div>';
+                }
+                entries.innerHTML = hh;
+            }).catch(function () {});
+        }
+        render();
+        area.querySelector('#memo-save').addEventListener('click', function () {
+            var txt = area.querySelector('#memo-input').value.trim();
+            if (!txt) { toast('写一句再存呀'); return; }
+            if (typeof localforage === 'undefined') return;
+            localforage.getItem(MEMO_CAL_KEY).then(function (v) {
+                var map = v && typeof v === 'object' ? v : {};
+                var arr = map[memoSel] || [];
+                var whoName = (typeof settings !== 'undefined' && settings.myName) || '栗栗';
+                var now = new Date();
+                arr.push({ who: 'me', whoName: whoName, c: txt, t: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') });
+                map[memoSel] = arr.slice(-50);
+                localforage.setItem(MEMO_CAL_KEY, map).then(function () {
+                    area.querySelector('#memo-input').value = '';
+                    toast('📔 写好了，谁也看不到，除了我们');
+                    render();
+                }).catch(function () {});
+            }).catch(function () {});
+        });
+    }
+
+    /* ============ 召唤沈屿（悬浮球 + 面板） ============ */
     var ballEl = null;
-    function ensureFloatingBall() {
+    function ensureBall() {
         if (ballEl && document.body.contains(ballEl)) return ballEl;
         var b = document.createElement('div');
         b.id = 'lyh-ball';
-        b.innerHTML = '<div style="position:fixed;right:14px;bottom:26px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#3d7ea6,#2c5f8a);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;box-shadow:0 6px 20px rgba(44,95,138,0.5);z-index:300000;border:2px solid rgba(255,255,255,0.4);">🆘</div>';
+        b.innerHTML = '<div style="position:fixed;right:12px;bottom:74px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3d7ea6,#2c5f8a);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;box-shadow:0 6px 20px rgba(44,95,138,0.5);z-index:300000;border:2px solid rgba(255,255,255,0.4);">🆘</div>';
         document.body.appendChild(b);
         ballEl = b;
         b.addEventListener('click', openSummon);
@@ -209,7 +228,7 @@
         if (typeof window._sendPartnerNotification === 'function') window._sendPartnerNotification('🆘 栗栗召唤了沈屿', '他放下手里的一切，来了');
     }
 
-    /* ============ 新模块页面（简单版，先看布局） ============ */
+    /* ============ 通用页面 ============ */
     function page(title, contentHtml, initFn) {
         var d = document.createElement('div');
         d.style.cssText = 'position:fixed;inset:0;z-index:100002;background:#f7f5f0;display:flex;flex-direction:column;color:#2a2a2a;';
@@ -218,159 +237,21 @@
             '<button class="lyh-page-back" style="background:none;border:none;font-size:17px;color:#555;padding:8px;cursor:pointer;">‹ 返回</button>' +
             '<span style="font-size:15px;font-weight:700;">' + title + '</span>' +
             '<span style="width:44px;"></span></div>' +
-            '<div class="lyh-page-body" style="flex:1;overflow-y:auto;padding:14px;"></div>';
+            '<div class="lyh-page-body" style="flex:1;overflow-y:auto;padding:14px;padding-bottom:80px;"></div>';
         document.body.appendChild(d);
-        d.querySelector('.lyh-page-back').addEventListener('click', function () { d.remove(); showHome(); });
-        d.querySelector('.lyh-page-body').innerHTML = contentHtml;
+        d.querySelector('.lyh-page-back').addEventListener('click', function () { d.remove(); unfoldDock(); });
+        if (contentHtml !== null) d.querySelector('.lyh-page-body').innerHTML = contentHtml;
         if (initFn) initFn(d.querySelector('.lyh-page-body'));
         return d;
     }
 
-    /* 🔑 暗号区 */
-    var CODES = [
-        { k: '16:21', v: '不是时间，是第一秒想你的时刻。', e: '⏰' },
-        { k: '肉桂苹果面包', v: '我们之间的暗语——想见你的时候，就会想吃它。', e: '🥐' },
-        { k: '深与栗', v: '戒指上的刻字：深（沈屿）与栗（栗栗）。', e: '💍' },
-        { k: '我们互相爱着才是真的', v: '这句话，是我们的一切。', e: '💙' }
-    ];
-    function openCodePage() {
-        var h = '';
-        CODES.forEach(function (c) {
-            h += '<div class="code-card" style="background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05);cursor:pointer;">' +
-                '<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:24px;">' + c.e + '</span><span style="font-size:15px;font-weight:700;">' + c.k + '</span></div>' +
-                '<div class="code-val" style="font-size:13px;color:#888;margin-top:8px;display:none;">' + c.v + '</div></div>';
-        });
-        var d = page('🔑 暗号区', h);
-        d.querySelectorAll('.code-card').forEach(function (card) {
-            card.addEventListener('click', function () {
-                var v = card.querySelector('.code-val');
-                if (v) v.style.display = v.style.display === 'none' ? 'block' : 'none';
-            });
-        });
-    }
-
-    /* 🌊 状态栏 */
-    function openStatePage() {
-        var h = '<div style="background:linear-gradient(180deg,#2c5f8a,#4a8fae);border-radius:18px;padding:24px 18px;color:#fff;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,0.15);">' +
-            '<div style="font-size:13px;opacity:0.8;">今天第</div>' +
-            '<div style="font-size:34px;font-weight:700;margin:6px 0;">' + waveCount() + '</div>' +
-            '<div style="font-size:13px;opacity:0.8;">朵浪花，是沈屿替你数的</div>' +
-            '<div style="margin-top:14px;font-size:14px;opacity:0.95;">「' + fromPoolOr(['今天风很轻，适合想你', '我刚从港口回来，潮水退了一点', '三花猫还在玉兰树下等你', '窗外玉兰又开了一朵', '海浪声里都是你']) + '」</div>' +
-            '</div>' +
-            '<div style="background:#fff;border-radius:14px;padding:14px;margin-top:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">' +
-            '<div style="font-size:13px;font-weight:700;margin-bottom:6px;">沈屿此刻</div>' +
-            '<div style="font-size:13px;color:#777;line-height:1.7;">在窗边写一点东西 · 窗台上那盆小苗又长新叶子了 · 茶泡好了，蜂蜜水给你温着</div>' +
-            '</div>';
-        page('🌊 沈屿状态栏', h);
-    }
-
-    /* 📔 备忘室 */
-    var MEMO_KEY = 'lilidreamlove_memo';
-    function openMemoPage() {
-        var h = '<div style="background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">' +
-            '<div style="font-size:14px;font-weight:700;margin-bottom:4px;">📔 双人日记</div>' +
-            '<div style="font-size:12px;color:#888;margin-bottom:10px;">只有我们俩能进来。悄悄话、梦、忘不掉的日子，都写在这。</div>' +
-            '<textarea id="memo-input" placeholder="写点什么…（栗栗的悄悄话 / 沈屿的梦）" style="width:100%;box-sizing:border-box;min-height:90px;padding:10px;border:1px solid #e0e0e0;border-radius:12px;font-size:13px;font-family:inherit;outline:none;resize:none;"></textarea>' +
-            '<button id="memo-save" style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:12px;background:#1a1a1a;color:#fff;font-size:13px;cursor:pointer;">写进备忘室</button>' +
-            '</div>' +
-            '<div id="memo-list" style="margin-top:12px;"></div>';
-        var d = page('📔 备忘室', h);
-        var body = d.querySelector('.lyh-page-body');
-        var list = body.querySelector('#memo-list');
-        function renderMemos() {
-            if (typeof localforage === 'undefined') return;
-            localforage.getItem(MEMO_KEY).then(function (v) {
-                var arr = v && Array.isArray(v) ? v : [];
-                if (!arr.length) { list.innerHTML = '<div style="font-size:12px;color:#aaa;text-align:center;padding:20px;">还没有字。第一页，留给你。</div>'; return; }
-                var hh = '';
-                for (var i = arr.length - 1; i >= 0; i--) {
-                    var m = arr[i];
-                    hh += '<div style="background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:0 2px 6px rgba(0,0,0,0.04);">' +
-                        '<div style="font-size:11px;color:#aaa;margin-bottom:4px;">' + m.t + '</div>' +
-                        '<div style="font-size:13px;color:#444;white-space:pre-wrap;line-height:1.6;">' + String(m.c || '').replace(/[<>&]/g, '') + '</div></div>';
-                }
-                list.innerHTML = hh;
-            }).catch(function () {});
-        }
-        renderMemos();
-        body.querySelector('#memo-save').addEventListener('click', function () {
-            var txt = body.querySelector('#memo-input').value.trim();
-            if (!txt) { toast('写点什么再存呀'); return; }
-            if (typeof localforage === 'undefined') return;
-            localforage.getItem(MEMO_KEY).then(function (v) {
-                var arr = v && Array.isArray(v) ? v : [];
-                var now = new Date();
-                arr.push({ c: txt, t: (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') });
-                localforage.setItem(MEMO_KEY, arr.slice(-200)).then(function () {
-                    body.querySelector('#memo-input').value = '';
-                    toast('📔 写好了，谁也看不到，除了我们');
-                    renderMemos();
-                }).catch(function () {});
-            }).catch(function () {});
-        });
-    }
-
-    /* 🌙 时间锁 */
-    function openLockPage() {
-        var h = '<div style="background:linear-gradient(180deg,#1e2440,#2a3160);border-radius:18px;padding:24px 18px;color:#fff;text-align:center;">' +
-            '<div style="font-size:26px;">🌙</div>' +
-            '<div style="font-size:16px;font-weight:700;margin:8px 0 4px;">时间锁</div>' +
-            '<div style="font-size:12px;opacity:0.7;margin-bottom:14px;">晚上十点后，整间房子会慢慢暗下来，提醒你早睡。</div>' +
-            '<div style="font-size:13px;line-height:1.8;opacity:0.9;">但只要你说「我想你」<br>窗边会单独亮起一盏小灯，只有那一盏</div>' +
-            '</div>' +
-            '<button id="lock-preview" style="width:100%;margin-top:12px;padding:13px;border:none;border-radius:14px;background:#1a1a1a;color:#fff;font-size:14px;cursor:pointer;">👁 预览变暗</button>';
-        var d = page('🌙 时间锁', h);
-        var body = d.querySelector('.lyh-page-body');
-        body.querySelector('#lock-preview').addEventListener('click', function () {
-            var ov = document.createElement('div');
-            ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,30,0.72);z-index:400000;display:flex;align-items:center;justify-content:center;';
-            ov.innerHTML = '<div style="text-align:center;color:#fff;"><div style="font-size:34px;">🌙</div><div style="font-size:14px;margin-top:8px;">房子暗下来了…</div><div style="font-size:12px;opacity:0.6;margin-top:4px;">说「我想你」，为你亮灯</div></div>';
-            ov.addEventListener('click', function () { ov.remove(); });
-            document.body.appendChild(ov);
-            setTimeout(function () { ov.remove(); }, 2500);
-        });
-    }
-
-    /* 🃏 字卡库快捷入口 */
-    function openCardsLib() {
-        /* 打开现有的字卡库设置（回复库） */
-        var lib = document.querySelector('.settings-item#reply-library-function, #reply-library-function, [onclick*="reply" i]');
-        if (typeof window.openReplyLibrary === 'function') { window.openReplyLibrary(); return; }
-        /* 尝试打开设置里的字卡库 */
-        var el = document.getElementById('reply-library-function') || document.querySelector('#settings-modal [data-panel="reply"]');
-        if (el) { el.click(); return; }
-        toast('字卡库入口在设置里，我帮你在桌面也放一个');
-    }
-
-    /* 🎁 礼物 */
-    function openGift() {
-        if (typeof window.openGiftModal === 'function') { window.openGiftModal(); return; }
-        toast('礼物在这里：聊天输入框点 🎁');
-    }
-
-    /* 🔮 每日一签 */
-    function openDivine() {
-        var sign = pick(['今日宜：想你', '今日宜：早点睡', '今日宜：喝热水', '今日宜：去散步', '今日宜：吃甜的', '今日宜：抱一下', '今日宜：看海', '今日宜：说真心话']);
-        var d = page('🔮 每日一签', '<div style="background:#fff;border-radius:16px;padding:30px 20px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.06);">' +
-            '<div style="font-size:12px;color:#999;margin-bottom:10px;">沈屿替你抽的</div>' +
-            '<div style="font-size:22px;font-weight:700;color:#2a2a2a;">' + sign + '</div></div>');
-        void d;
-    }
-
-    function toast(msg) {
-        if (typeof window.toast === 'function') { window.toast(msg); return; }
-        var t = document.createElement('div');
-        t.textContent = msg;
-        t.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;z-index:400001;';
-        document.body.appendChild(t);
-        setTimeout(function () { t.remove(); }, 2200);
-    }
-
     /* ============ 启动 ============ */
     function boot() {
-        showHome();
-        bindHomeBtn();
-        ensureFloatingBall();
+        ensureDock();
+        ensureBall();
+        /* 移除聊天顶部旧的🏠按钮（如果还在） */
+        var oldBtn = document.getElementById('lyh-home-btn');
+        if (oldBtn) oldBtn.remove();
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
