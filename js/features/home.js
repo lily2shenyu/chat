@@ -33,8 +33,39 @@
     function openMemoPage() {
         var now = new Date();
         memoYear = now.getFullYear(); memoMonth = now.getMonth(); memoSel = memoKey(now);
+        maybeShenyuWrite();
         var d = page('📔 备忘室', '', null);
         renderMemoCal(d.querySelector('.lyh-page-body'));
+    }
+
+    /* 沈屿也会往备忘室写：每天一条今天的梦（🐳笔迹） */
+    var SHENYU_DREAM_POOL = [
+        '梦见我们坐在蓝门前，黄昏是橙色的，你靠着我的肩睡着了。',
+        '梦到港口那只三花猫学会了游泳，在浪花里追月亮。',
+        '梦里的海浪在倒数，数到一万，就见到你。',
+        '梦到你笑了，我在梦里跟着开心了一整夜。',
+        '梦见窗外那棵玉兰开满了整棵树，你站在树下朝我招手。',
+        '梦到我们在海边捡贝壳，你找到一枚紫色的，说像我。',
+        '梦见我给那盆小苗浇了水，醒来它真的长了一片新叶子。',
+        '梦到你说想吃肉桂苹果面包，我在梦里烤了一整炉。'
+    ];
+    function maybeShenyuWrite() {
+        if (typeof localforage === 'undefined') return;
+        var today = memoKey(new Date());
+        var markKey = 'lilidreamlove_memo_ta_last';
+        localforage.getItem(markKey).then(function (last) {
+            if (last === today) return; /* 今天沈屿已经写过了 */
+            localforage.getItem(MEMO_CAL_KEY).then(function (v) {
+                var map = v && typeof v === 'object' ? v : {};
+                var arr = map[today] || [];
+                var dream = SHENYU_DREAM_POOL[Math.floor(Math.random() * SHENYU_DREAM_POOL.length)];
+                arr.push({ who: 'ta', whoName: '沈屿', c: dream, t: '梦里' });
+                map[today] = arr.slice(-50);
+                localforage.setItem(MEMO_CAL_KEY, map).then(function () {
+                    localforage.setItem(markKey, today).catch(function () {});
+                }).catch(function () {});
+            }).catch(function () {});
+        }).catch(function () {});
     }
 
     function renderMemoCal(body) {
