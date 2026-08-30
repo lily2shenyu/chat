@@ -1,22 +1,30 @@
 /* =========================================================
- * 房间 · room v2（整合版）
+ * 房间 · room v3
  * 入口：设置 → 功能模块 → 房间
- * 世界观（借鉴 mochi）：梦角是灵体，常在身边但看不见，
- * 偶尔能感觉到、能摸到。
- * 房间首页 = 小鲸鱼场景 + 四个功能卡片（寻踪/同频/此间/伸手）
- * 底部 = 经期记录 ｜ 心意集市
+ * 世界观：梦角是灵体，常在身边但看不见，偶尔能感觉到、能摸到。
+ * 双小人：🐳（沈屿）+ 🦊（栗栗），有感情培养过程：
+ *   初识 → 相识 → 牵手 → 拥抱 → 亲亲 → 永远在一起
+ * 互动（靠近/点击/感应/伸手成功）累积亲密度。
+ * 房间首页 = 双小人场景 + 寻踪/同频/此间/伸手 四卡片
+ * 底部 = 经期记录（心意集市已并入送礼，故移除）
  * ========================================================= */
 (function () {
     var PERIOD_KEY = 'lilidreamlove_period';
-    var MARKET_KEY = 'lilidreamlove_market';
-    var WALLET_KEY = 'lilidreamlove_wallet';
-    var CJIAN_KEY = 'lilidreamlove_cjian';
+    var LOVE_KEY = 'lilidreamlove_love';
     var period = { start: '', cycle: 28 };
-    var market = { sent: [] };
-    var wallet = { my: 0, ta: 0 };
+    var love = { lv: 0, exp: 0, last: 0 };
 
     var TA = { name: '沈屿', avatar: null };
     var ME = { name: '栗栗', avatar: null };
+
+    var LOVE_LEVELS = [
+        { name: '初识', need: 0 },
+        { name: '相识', need: 20 },
+        { name: '牵手', need: 50 },
+        { name: '拥抱', need: 90 },
+        { name: '亲亲', need: 140 },
+        { name: '永远在一起', need: 200 }
+    ];
 
     function refreshIdentities() {
         try {
@@ -35,12 +43,31 @@
         if (typeof localforage === 'undefined') return;
         refreshIdentities();
         localforage.getItem(PERIOD_KEY).then(function (v) { if (v && typeof v === 'object') period = v; }).catch(function () {});
-        localforage.getItem(MARKET_KEY).then(function (v) { if (v && typeof v === 'object') market = v; }).catch(function () {});
-        localforage.getItem(WALLET_KEY).then(function (v) { if (v && typeof v === 'object') wallet = v; }).catch(function () {});
+        localforage.getItem(LOVE_KEY).then(function (v) {
+            if (v && typeof v === 'object') love = v;
+            /* 每日进房 + 亲密 */
+            var today = todayNum();
+            if (love.last !== today) { addExp(3, true); love.last = today; saveLove(); }
+        }).catch(function () {});
     }
     function savePeriod() { if (typeof localforage !== 'undefined') localforage.setItem(PERIOD_KEY, period).catch(function () {}); }
-    function saveMarket() { if (typeof localforage !== 'undefined') localforage.setItem(MARKET_KEY, market).catch(function () {}); }
-    function saveWallet() { if (typeof localforage !== 'undefined') localforage.setItem(WALLET_KEY, wallet).catch(function () {}); }
+    function saveLove() { if (typeof localforage !== 'undefined') localforage.setItem(LOVE_KEY, love).catch(function () {}); }
+
+    function todayNum() { var d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+    function loveLevel() { return LOVE_LEVELS[love.lv] || LOVE_LEVELS[0]; }
+    function loveNext() { return LOVE_LEVELS[love.lv + 1] || null; }
+    function addExp(n, silent) {
+        love.exp += n;
+        while (loveNext() && love.exp >= loveNext().need) {
+            love.lv++;
+            if (!silent) {
+                toast('💞 感情升温：' + loveLevel().name);
+                if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+            }
+        }
+        saveLove();
+        renderLoveBar();
+    }
 
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '"', "'": '&#39;' }[c]; }); }
     function todayStr() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -65,7 +92,8 @@
     /* ============ 页面骨架 ============ */
     var pageEl = null;
     var currentTab = 'home';
-    var subPanel = null; /* 寻踪/同频/此间/伸手 */
+    var subPanel = null;
+    var lastNear = 0;
 
     function ensurePage() {
         if (pageEl && document.body.contains(pageEl)) return pageEl;
@@ -78,13 +106,22 @@
             '<span style="font-size:16px;font-weight:700;">🏠 房间</span>' +
             '<span style="width:44px;"></span>' +
             '</div>' +
-            /* 首页场景 */
             '<div id="room-home" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">' +
-            '<div id="room-scene" style="flex:1;position:relative;overflow:hidden;background:linear-gradient(180deg,#fdf6ec 0%,#f3e9d9 60%,#e0c9a8 100%);min-height:160px;">' +
-            '<div style="position:absolute;left:16px;top:10px;font-size:11px;color:rgba(0,0,0,0.35);">点击房间，小鲸鱼会走过去</div>' +
-            '<div id="room-guy" style="position:absolute;left:40%;top:55%;width:56px;height:56px;transition:left 0.9s ease, top 0.9s ease;font-size:46px;line-height:56px;text-align:center;z-index:5;">🐳</div>' +
+            /* 亲密条 */
+            '<div id="love-bar" style="flex-shrink:0;background:#fff;border-bottom:1px solid rgba(0,0,0,0.06);padding:8px 14px;display:flex;align-items:center;gap:10px;">' +
+            '<span style="font-size:16px;">💞</span>' +
+            '<div style="flex:1;">' +
+            '<div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:3px;"><span id="love-lv">初识</span><span id="love-exp">0/20</span></div>' +
+            '<div style="height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden;"><div id="love-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#f5a3c0,#c79ae8);border-radius:3px;transition:width .6s;"></div></div>' +
             '</div>' +
-            /* 四个功能卡片 */
+            '</div>' +
+            /* 场景 */
+            '<div id="room-scene" style="flex:1;position:relative;overflow:hidden;background:linear-gradient(180deg,#fdf6ec 0%,#f3e9d9 60%,#e0c9a8 100%);min-height:170px;">' +
+            '<div style="position:absolute;left:16px;top:10px;font-size:11px;color:rgba(0,0,0,0.35);">点它们俩互动，感情会慢慢培养</div>' +
+            '<div id="room-guy" style="position:absolute;left:25%;top:55%;width:52px;height:52px;transition:left 0.9s ease, top 0.9s ease;font-size:42px;line-height:52px;text-align:center;z-index:5;cursor:pointer;">🐳</div>' +
+            '<div id="room-fox" style="position:absolute;left:65%;top:55%;width:52px;height:52px;transition:left 0.9s ease, top 0.9s ease;font-size:42px;line-height:52px;text-align:center;z-index:5;cursor:pointer;">🦊</div>' +
+            '</div>' +
+            /* 四功能卡片 */
             '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px;background:#f7f5f0;">' +
             '<div class="room-feat" data-f="ck" style="background:#fff;border-radius:14px;padding:14px;text-align:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.05);">' +
             '<div style="font-size:24px;">📍</div><div style="font-size:13px;font-weight:600;margin-top:4px;">寻踪</div><div style="font-size:11px;color:#999;margin-top:2px;">TA 的日常</div></div>' +
@@ -96,59 +133,111 @@
             '<div style="font-size:24px;">🤲</div><div style="font-size:13px;font-weight:600;margin-top:4px;">伸手</div><div style="font-size:11px;color:#999;margin-top:2px;">长按摸一摸</div></div>' +
             '</div>' +
             '</div>' +
-            /* 子面板（全屏盖住） */
             '<div id="room-sub" style="display:none;flex:1;flex-direction:column;background:#f7f5f0;overflow:hidden;"></div>' +
-            /* 底部tab */
             '<div id="room-tabs" style="flex-shrink:0;display:flex;background:#ffffff;border-top:1px solid rgba(0,0,0,0.06);">' +
             '<div class="room-tab" data-tab="home" style="flex:1;text-align:center;padding:12px 0;cursor:pointer;font-size:13px;font-weight:600;">🏠 房间</div>' +
             '<div class="room-tab" data-tab="period" style="flex:1;text-align:center;padding:12px 0;cursor:pointer;font-size:13px;color:#888;">🌸 经期</div>' +
-            '<div class="room-tab" data-tab="market" style="flex:1;text-align:center;padding:12px 0;cursor:pointer;font-size:13px;color:#888;">🎁 心意集市</div>' +
             '</div>';
         document.body.appendChild(d);
         pageEl = d;
         d.querySelector('#room-back').addEventListener('click', close);
         d.querySelectorAll('.room-tab').forEach(function (t) { t.addEventListener('click', function () { switchTab(t.dataset.tab); }); });
         d.querySelectorAll('.room-feat').forEach(function (f) { f.addEventListener('click', function () { openSub(f.dataset.f); }); });
-        /* 小人点击移动 */
+
+        /* 🐳 点击：和沈屿互动 */
+        var guy = d.querySelector('#room-guy');
+        guy.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var lv = loveLevel().name;
+            guyBubble(guy, fromPoolOr(['在呢', '想你了', '过来', '陪你']));
+            addExp(2);
+            if (love.lv >= 3 && Math.random() < 0.5) guyBubble(guy, '（他轻轻碰了碰你的手）');
+        });
+        /* 🦊 点击：摸摸栗栗 */
+        var fox = d.querySelector('#room-fox');
+        fox.addEventListener('click', function (e) {
+            e.stopPropagation();
+            foxBubble(fox, fromPoolOr(['嘻嘻', '我在呢', '摸摸', '想你了']));
+            addExp(2);
+        });
+        /* 点击空白：两只都走过去 */
         var scene = d.querySelector('#room-scene');
         scene.addEventListener('click', function (e) {
-            var r = scene.getBoundingClientRect();
-            var x = e.clientX - r.left - 28, y = e.clientY - r.top - 28;
-            var guy = d.querySelector('#room-guy');
-            if (guy) { guy.style.left = Math.max(4, Math.min(r.width - 60, x)) + 'px'; guy.style.top = Math.max(4, Math.min(r.height - 60, y)) + 'px'; }
-            guyBubble(fromPoolOr(['我来啦', '在这儿', '在呢', '陪你']));
-        });
-        setInterval(function () {
-            var guy = d.querySelector('#room-guy'), sc = d.querySelector('#room-scene');
-            if (guy && sc && pageEl.style.display !== 'none' && currentTab === 'home' && subPanel === null) {
-                var w = sc.clientWidth, h = sc.clientHeight;
-                guy.style.left = (10 + Math.random() * (w - 80)) + 'px';
-                guy.style.top = (10 + Math.random() * (h - 80)) + 'px';
+            if (e.target === scene) {
+                var r = scene.getBoundingClientRect();
+                var x = e.clientX - r.left - 26, y = e.clientY - r.top - 26;
+                guy.style.left = Math.max(4, Math.min(r.width - 56, x - 30)) + 'px';
+                guy.style.top = Math.max(4, Math.min(r.height - 56, y)) + 'px';
+                fox.style.left = Math.max(4, Math.min(r.width - 56, x + 30)) + 'px';
+                fox.style.top = Math.max(4, Math.min(r.height - 56, y)) + 'px';
             }
-        }, 9000 + Math.random() * 7000);
+        });
+
+        /* 定时：🐳 慢慢靠近 🦊，靠近冒💕 + 亲密度 */
+        setInterval(function () {
+            var sc = d.querySelector('#room-scene');
+            if (!sc || pageEl.style.display === 'none' || currentTab !== 'home' || subPanel !== null) return;
+            var w = sc.clientWidth, h = sc.clientHeight;
+            var gx = 10 + Math.random() * (w - 60), gy = 10 + Math.random() * (h - 60);
+            var fx = 10 + Math.random() * (w - 60), fy = 10 + Math.random() * (h - 60);
+            if (Math.random() < 0.6) { fx = gx + (Math.random() < 0.5 ? -1 : 1) * (40 + Math.random() * 30); fy = gy + (Math.random() < 0.5 ? -1 : 1) * (20 + Math.random() * 20); }
+            guy.style.left = gx + 'px'; guy.style.top = gy + 'px';
+            fox.style.left = fx + 'px'; fox.style.top = fy + 'px';
+            var dist = Math.abs(gx - fx) + Math.abs(gy - fy);
+            if (dist < 90 && Date.now() - lastNear > 60000) {
+                lastNear = Date.now();
+                var heart = document.createElement('div');
+                heart.textContent = '💕';
+                heart.style.cssText = 'position:absolute;left:' + ((gx + fx) / 2) + 'px;top:' + ((gy + fy) / 2 - 30) + 'px;font-size:18px;z-index:8;animation:loveFloat 1.6s ease-out forwards;';
+                sc.appendChild(heart);
+                setTimeout(function () { heart.remove(); }, 1700);
+                addExp(1);
+                if (love.lv >= 2 && Math.random() < 0.4) guyBubble(guy, '（他往你那边挪了挪）');
+            }
+        }, 7000 + Math.random() * 5000);
+
+        /* 冒泡动画 */
+        var st = document.createElement('style');
+        st.textContent = '@keyframes loveFloat{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-34px);opacity:0}}';
+        document.head.appendChild(st);
         return d;
     }
 
     var bubbleTimer = null;
-    function guyBubble(text) {
-        var g = pageEl ? pageEl.querySelector('#room-guy') : null;
-        if (!g) return;
-        var old = g.querySelector('.guy-bubble');
+    function bubble(el, text) {
+        var old = el.querySelector('.guy-bubble');
         if (old) old.remove();
         var b = document.createElement('div');
         b.className = 'guy-bubble';
         b.textContent = text;
-        b.style.cssText = 'position:absolute;top:-30px;left:50%;transform:translateX(-50%);background:#fff;border-radius:12px;padding:3px 10px;font-size:12px;color:#555;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.1);z-index:9;';
-        g.appendChild(b);
+        b.style.cssText = 'position:absolute;top:-26px;left:50%;transform:translateX(-50%);background:#fff;border-radius:12px;padding:3px 10px;font-size:12px;color:#555;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.1);z-index:9;';
+        el.appendChild(b);
         clearTimeout(bubbleTimer);
         bubbleTimer = setTimeout(function () { if (b.parentNode) b.remove(); }, 1800);
     }
+    function guyBubble(el, t) { bubble(el || (pageEl ? pageEl.querySelector('#room-guy') : null), t); }
+    function foxBubble(el, t) { bubble(el || (pageEl ? pageEl.querySelector('#room-fox') : null), t); }
 
-    function open() { var d = ensurePage(); d.style.display = 'flex'; refreshIdentities(); switchTab(currentTab); }
+    function renderLoveBar() {
+        var page = pageEl;
+        if (!page) return;
+        var lv = loveLevel();
+        var next = loveNext();
+        var lvEl = page.querySelector('#love-lv');
+        var exEl = page.querySelector('#love-exp');
+        var flEl = page.querySelector('#love-fill');
+        if (lvEl) lvEl.textContent = lv.name;
+        if (exEl) exEl.textContent = next ? (love.exp + ' / ' + next.need) : 'MAX';
+        if (flEl) {
+            var pct = next ? Math.min(100, Math.round((love.exp - lv.need) / (next.need - lv.need) * 100)) : 100;
+            flEl.style.width = pct + '%';
+        }
+    }
+
+    function open() { var d = ensurePage(); d.style.display = 'flex'; refreshIdentities(); renderLoveBar(); switchTab(currentTab); }
     function close() { var d = pageEl; if (d) d.style.display = 'none'; }
     window.openRoom = open;
 
-    /* ============ tab / 子面板 ============ */
     function switchTab(tab) {
         currentTab = tab;
         var page = pageEl;
@@ -161,9 +250,8 @@
         });
         var home = page.querySelector('#room-home');
         var sub = page.querySelector('#room-sub');
-        var body = page.querySelector('#room-sub');
         if (tab === 'home') { home.style.display = 'flex'; sub.style.display = 'none'; }
-        else { home.style.display = 'none'; sub.style.display = 'flex'; if (tab === 'period') renderPeriod(); else if (tab === 'market') renderMarket(); }
+        else { home.style.display = 'none'; sub.style.display = 'flex'; if (tab === 'period') renderPeriod(); }
     }
     function openSub(f) {
         subPanel = f;
@@ -177,7 +265,7 @@
         else if (f === 'ss') renderShenshou();
     }
 
-    /* ============ 📍 寻踪：TA 的日常 ============ */
+    /* ============ 📍 寻踪 ============ */
     var CK_PLACES = ['在家', '在公司', '在咖啡店', '在公园', '在图书馆', '在路上', '在便利店', '在地铁上', '在阳台', '在河边', '在面包店', '在车站', '在港口', '在蓝门前', '在玉兰树下'];
     var CK_ACTIONS = ['刷手机', '看书', '发呆', '听歌', '写东西', '喝奶茶', '散步', '想你', '看电影', '追剧', '泡茶', '吃水果', '等你回消息', '看海'];
     var CK_MSGS = ['想你了', '记得按时吃饭', '今天也很喜欢你', '早点休息', '有空给我回消息', '别太累', '喝水了吗', '今天开心吗', '路上注意安全', '晚安'];
@@ -200,8 +288,7 @@
         h += '<div style="display:flex;gap:10px;margin-top:14px;">';
         h += '<button id="ck-again" style="flex:1;padding:12px;border:none;border-radius:14px;background:#1a1a1a;color:#fff;font-size:14px;cursor:pointer;">🔄 再看一眼</button>';
         h += '<button id="ck-hint" style="flex:1;padding:12px;border:none;border-radius:14px;background:#f0f0f0;color:#666;font-size:14px;cursor:pointer;">✉️ 提醒TA</button>';
-        h += '</div>';
-        h += '</div>';
+        h += '</div></div>';
         sub.innerHTML = h;
         var ag = document.getElementById('ck-again');
         if (ag) ag.addEventListener('click', renderCheckin);
@@ -209,10 +296,11 @@
         if (ht) ht.addEventListener('click', function () {
             if (typeof window._sendPartnerNotification === 'function') window._sendPartnerNotification('📍 你来找过' + TA.name, 'TA 感觉到了');
             toast('已提醒，TA 好像动了动');
+            addExp(1);
         });
     }
 
-    /* ============ 💞 同频：此刻状态 + 敲三下暗号 ============ */
+    /* ============ 💞 同频 ============ */
     var TP_STATES = ['在发呆', '在听歌', '在看书', '在等你', '在数海浪', '在阳台晒太阳', '在想你说过的话', '在整理房间'];
     function renderTongpin() {
         var sub = pageEl.querySelector('#room-sub');
@@ -233,15 +321,14 @@
         h += '<div style="font-size:12px;color:#999;margin-bottom:14px;">跨世界的弱连接——敲三下，TA 会回应。</div>';
         h += '<div id="tp-knock" style="width:110px;height:110px;margin:0 auto;border-radius:50%;background:linear-gradient(135deg,#dfe8f5,#f2e6f0);display:flex;align-items:center;justify-content:center;font-size:38px;cursor:pointer;user-select:none;box-shadow:0 4px 14px rgba(0,0,0,0.08);">🤍</div>';
         h += '<div id="tp-reply" style="font-size:13px;color:#7a7a7a;margin-top:14px;min-height:20px;"></div>';
-        h += '</div>';
-        h += '</div>';
+        h += '</div></div>';
         sub.innerHTML = h;
         var knock = document.getElementById('tp-knock');
         var reply = document.getElementById('tp-reply');
         var cnt = 0;
         if (knock) knock.addEventListener('click', function () {
             cnt++;
-            var vib = navigator.vibrate ? navigator.vibrate(40) : null;
+            if (navigator.vibrate) navigator.vibrate(40);
             knock.style.transform = 'scale(0.92)';
             setTimeout(function () { knock.style.transform = 'scale(1)'; }, 120);
             if (cnt < 3) { reply.textContent = '咚 · 还差 ' + (3 - cnt) + ' 下'; reply.style.color = '#999'; }
@@ -250,12 +337,13 @@
                 reply.textContent = '「' + fromPoolOr(['听到了，在呢', '三下，收到', '你也想我了吧', '在的，一直都在']) + '」';
                 reply.style.color = '#b06ab3';
                 if (navigator.vibrate) navigator.vibrate([60, 60, 60]);
+                addExp(2);
                 if (typeof window._sendPartnerNotification === 'function') window._sendPartnerNotification('💞 ' + TA.name + '回应了你的暗号', '跨世界的三下，他收到了');
             }
         });
     }
 
-    /* ============ 🌙 此间：TA 的世界时间 + 感应 ============ */
+    /* ============ 🌙 此间 ============ */
     var SHICHEN = ['子时', '丑时', '寅时', '卯时', '辰时', '巳时', '午时', '未时', '申时', '酉时', '戌时', '亥时'];
     var CJ_SENSE = ['好像有谁轻轻应了一声', 'TA 的气息就在附近，近得能听见呼吸', '说不上来，但 TA 在', '感觉到一缕熟悉的气息，是 TA', '很远，但没有离开', 'TA 似乎就在你身后'];
     function renderCjian() {
@@ -280,8 +368,7 @@
         h += '<div style="font-size:12px;color:#999;margin-bottom:14px;">TA 是灵体，常在身边但看不见——试着感应。</div>';
         h += '<button id="cj-sense" style="width:100%;padding:14px;border:none;border-radius:14px;background:#1a1a1a;color:#fff;font-size:14px;cursor:pointer;">感 应</button>';
         h += '<div id="cj-sense-reply" style="font-size:13px;color:#7a7a7a;margin-top:12px;min-height:20px;"></div>';
-        h += '</div>';
-        h += '</div>';
+        h += '</div></div>';
         sub.innerHTML = h;
         var btn = document.getElementById('cj-sense');
         var rp = document.getElementById('cj-sense-reply');
@@ -290,10 +377,11 @@
             rp.textContent = hit ? '「' + pick(CJ_SENSE) + '」' : '……很安静，什么都没有。';
             rp.style.color = hit ? '#8a6ab0' : '#aaa';
             if (hit && navigator.vibrate) navigator.vibrate(30);
+            if (hit) addExp(2);
         });
     }
 
-    /* ============ 🤲 伸手：长按，有概率摸到 ============ */
+    /* ============ 🤲 伸手 ============ */
     var SS_HIT = ['（TA 的手心微微发烫）', '摸到了——TA 轻轻握住你', '指尖碰到一点温度，是 TA', 'TA 也伸出了手', '手心贴着手心，TA 没有松开'];
     var SS_MISS = ['摸空了。TA 不在那儿。', '什么也没有……只有风。', '指尖落了空，TA 躲开了'];
     function renderShenshou() {
@@ -309,8 +397,7 @@
         h += '<div id="ss-hand" style="width:150px;height:150px;margin:14px auto;border-radius:50%;background:linear-gradient(135deg,#f7e8d8,#f2d9e6);display:flex;align-items:center;justify-content:center;font-size:56px;cursor:pointer;user-select:none;box-shadow:0 6px 18px rgba(0,0,0,0.08);transition:box-shadow 0.3s;">🫳</div>';
         h += '<div style="font-size:12px;color:#999;margin-bottom:12px;">长按伸手，悄悄摸一摸</div>';
         h += '<div id="ss-reply" style="font-size:14px;color:#7a7a7a;min-height:24px;line-height:1.6;"></div>';
-        h += '</div>';
-        h += '</div>';
+        h += '</div></div>';
         sub.innerHTML = h;
         var hand = document.getElementById('ss-hand');
         var rp = document.getElementById('ss-reply');
@@ -326,6 +413,7 @@
                         rp.style.color = '#b06ab3';
                         hand.style.boxShadow = '0 0 40px 12px rgba(255,200,120,0.55)';
                         if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+                        addExp(3);
                         if (typeof window._sendPartnerNotification === 'function') window._sendPartnerNotification('🤲 你摸到' + TA.name + '了', '手心贴手心');
                     } else {
                         rp.textContent = pick(SS_MISS);
@@ -389,69 +477,6 @@
         var cs = document.getElementById('period-cycle');
         if (cs) cs.addEventListener('input', function () { period.cycle = parseInt(cs.value, 10) || 28; var v = document.getElementById('period-cycle-val'); if (v) v.textContent = period.cycle + ' 天'; });
         if (cs) cs.addEventListener('change', function () { savePeriod(); renderPeriod(); });
-    }
-
-    /* ============ 🎁 心意集市 ============ */
-    var HEARTS = [
-        { icon: '🤗', name: '拥抱', cost: 5, msg: '一个结结实实的拥抱' },
-        { icon: '😘', name: '亲亲', cost: 8, msg: '吧唧一口' },
-        { icon: '🚶', name: '散步', cost: 12, msg: '牵着手去港口散步' },
-        { icon: '🎵', name: '听歌', cost: 10, msg: '一起听同一首歌' },
-        { icon: '🫂', name: '贴贴', cost: 15, msg: '窝在一起贴贴' },
-        { icon: '🌊', name: '看海', cost: 20, msg: '坐在海边看落日' },
-        { icon: '☕', name: '咖啡', cost: 6, msg: '一起喝杯热咖啡' },
-        { icon: '💌', name: '一封情书', cost: 30, msg: '把想说的话都写给你' }
-    ];
-
-    function renderMarket() {
-        var sub = pageEl.querySelector('#room-sub');
-        if (!wallet.my && !wallet.ta) { wallet.my = 520; wallet.ta = 520; saveWallet(); }
-        var h = '';
-        h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;border-bottom:1px solid rgba(0,0,0,0.06);">';
-        h += '<button onclick="window.__roomCloseSub&&window.__roomCloseSub()" style="background:none;border:none;font-size:17px;color:#555;padding:8px;cursor:pointer;">‹</button>';
-        h += '<span style="font-size:15px;font-weight:700;">🎁 心意集市</span>';
-        h += '<span style="width:32px;"></span></div>';
-        h += '<div style="padding:16px;overflow-y:auto;">';
-        h += '<div style="display:flex;gap:10px;margin-bottom:12px;">';
-        h += '<div style="flex:1;background:#fff;border-radius:14px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><div style="font-size:11px;color:#999;">你的心意币</div><div style="font-size:20px;font-weight:700;color:#b06ab3;">💖 ' + wallet.my + '</div></div>';
-        h += '<div style="flex:1;background:#fff;border-radius:14px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><div style="font-size:11px;color:#999;">' + esc(TA.name) + ' 的</div><div style="font-size:20px;font-weight:700;color:#8a9ec9;">💙 ' + wallet.ta + '</div></div>';
-        h += '</div>';
-        h += '<div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin-bottom:12px;">';
-        h += '<div style="font-size:14px;font-weight:700;margin-bottom:4px;">挑一个心意送出去</div>';
-        h += '<div style="font-size:12px;color:#999;margin-bottom:12px;">你花心意币，TA 收下心意。一起攒一起花。</div>';
-        h += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">';
-        for (var i = 0; i < HEARTS.length; i++) {
-            var ht = HEARTS[i];
-            h += '<div class="heart-item" data-i="' + i + '" style="background:#f9f7f2;border:1px solid rgba(0,0,0,0.06);border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;">' +
-                '<div style="font-size:26px;">' + ht.icon + '</div>' +
-                '<div style="font-size:13px;font-weight:600;margin-top:6px;">' + ht.name + '</div>' +
-                '<div style="font-size:11px;color:#b06ab3;margin-top:2px;">💖 ' + ht.cost + '</div>' +
-                '</div>';
-        }
-        h += '</div></div>';
-        h += '<div style="background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">';
-        h += '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">已送出的心意</div>';
-        if (market.sent && market.sent.length) {
-            for (var j = market.sent.length - 1; j >= 0; j--) {
-                var s = market.sent[j];
-                h += '<div style="font-size:12px;color:#777;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' + esc(s.icon) + ' ' + esc(s.name) + ' · ' + esc(s.time) + '</div>';
-            }
-        } else { h += '<div style="font-size:12px;color:#aaa;">还没送过，挑一个吧</div>'; }
-        h += '</div></div>';
-        sub.innerHTML = h;
-        sub.querySelectorAll('.heart-item').forEach(function (el) {
-            el.addEventListener('click', function () {
-                var ht = HEARTS[parseInt(el.dataset.i, 10)];
-                if (!ht) return;
-                if (wallet.my < ht.cost) { toast('心意币不够，去陪TA玩、进房间攒攒吧'); return; }
-                wallet.my -= ht.cost; wallet.ta += ht.cost; saveWallet();
-                market.sent = market.sent || [];
-                market.sent.push({ icon: ht.icon, name: ht.name, time: new Date().toLocaleString().slice(5, 16) });
-                saveMarket();
-                toast(TA.name + '收下了你的' + ht.name + '：' + ht.msg);
-                renderMarket();
-            });
-        });
     }
 
     /* 子面板返回 */
