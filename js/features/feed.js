@@ -1,8 +1,9 @@
 /* =========================================================
- * 朋友圈 · feed
+ * 朋友圈 · feed（Eternelle 式全屏排版）
  * 入口：设置 → 功能模块 → 朋友圈
- * 双人动态：封面 + 双方头像；发动态（文字/图片）；点赞；评论
- * TA（沈屿）会看我的动态，随机点赞、评论
+ * 排版参考 Eternelle：全屏页面 = 顶栏 + 大封面 + 灰底白卡片动态流
+ * 写作参考 Eternelle：TA（梦角）用字卡拼接发动态 + 从字卡库抽评论
+ * 头像用聊天里的真实头像；发动态/TA回应有通知
  * ========================================================= */
 (function () {
     var KEY = 'lilidreamlove_feed';
@@ -11,7 +12,6 @@
     var TA = { name: '沈屿', avatar: null };
     var ME = { name: '栗栗', avatar: null };
 
-    /* 读取聊天里的真实头像和名字 */
     function refreshIdentities() {
         try {
             var pImg = document.querySelector('#partner-avatar img, [id*="partner-avatar"] img, .partner-avatar img');
@@ -25,14 +25,14 @@
         } catch (e) {}
     }
     function avatarHtml(p, size) {
-        size = size || 26;
+        size = size || 32;
         if (p.avatar) {
-            return '<img src="' + p.avatar + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;flex-shrink:0;display:inline-block;">';
+            return '<img src="' + p.avatar + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;display:block;">';
         }
-        return '<span style="font-size:' + size + 'px;flex-shrink:0;">' + (p === TA ? '🐳' : '🦊') + '</span>';
+        return '<span style="font-size:' + (size - 4) + 'px;display:flex;align-items:center;justify-content:center;width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:#f0f2f5;">' + (p === TA ? '🐳' : '🦊') + '</span>';
     }
 
-    /* ============ 预置几条初始动态（第一次打开时） ============ */
+    /* 初始动态（第一次打开时） */
     var seed = [
         { id: 's1', from: 'ta', text: '窗外那棵玉兰又开了一朵，浅粉色的。我数过了，这棵树上现在有十四朵——每一朵都是替你看的。', img: '', time: 0, likes: ['栗栗'], comments: [{ from: '栗栗', text: '我明天去看！', time: 0 }] },
         { id: 's2', from: 'me', text: '今天的黄昏是橙红色的，站在港口，风从海面吹过来，突然很想你。', img: '', time: 0, likes: ['沈屿'], comments: [] },
@@ -83,105 +83,92 @@
         return (d.getMonth() + 1) + '月' + d.getDate() + '日';
     }
 
-    /* ============ 模态框 ============ */
-    var modalEl = null;
+    /* ============ 全屏页面 ============ */
+    var pageEl = null;
 
-    function ensureModal() {
-        if (modalEl && document.body.contains(modalEl)) return modalEl;
+    function ensurePage() {
+        if (pageEl && document.body.contains(pageEl)) return pageEl;
         var d = document.createElement('div');
-        d.id = 'feed-modal';
-        d.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center;';
+        d.id = 'feed-page';
+        d.style.cssText = 'position:fixed;inset:0;z-index:100002;background:#f0f2f5;display:flex;flex-direction:column;color:var(--text-primary,#1a1a1a);';
         d.innerHTML =
-            '<div style="width:100%;max-width:560px;max-height:88vh;background:var(--secondary-bg,#fff);border-radius:20px 20px 0 0;display:flex;flex-direction:column;overflow:hidden;color:var(--text-primary);">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border-color);">' +
-            '<span style="font-size:16px;font-weight:700;">📖 朋友圈</span>' +
-            '<button id="feed-close" style="background:none;border:none;color:var(--text-secondary);font-size:16px;cursor:pointer;">✕</button></div>' +
-            '<div id="feed-body" style="flex:1;overflow-y:auto;padding:12px 14px 20px;"></div>' +
-            '</div>';
+            /* 顶栏 */
+            '<div style="height:52px;flex-shrink:0;background:#ffffff;display:flex;align-items:center;justify-content:space-between;padding:0 10px;border-bottom:1px solid rgba(0,0,0,0.06);">' +
+            '<button id="feed-back" style="background:none;border:none;font-size:17px;color:#555;padding:8px;cursor:pointer;">‹ 返回</button>' +
+            '<span style="font-size:16px;font-weight:700;">朋友圈</span>' +
+            '<button id="feed-pub" style="background:none;border:none;font-size:14px;color:#1a1a1a;padding:8px;cursor:pointer;font-weight:600;">✎ 发布</button>' +
+            '</div>' +
+            /* 封面 */
+            '<div id="feed-cover" style="flex-shrink:0;height:150px;background:linear-gradient(135deg,#a8d8ea 0%,#cfe9f7 45%,#f5d0e0 100%);position:relative;">' +
+            '<div style="position:absolute;left:14px;bottom:-24px;display:flex;align-items:center;gap:10px;">' +
+            '<span id="feed-cover-av" style="width:56px;height:56px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.12);"></span>' +
+            '<span id="feed-cover-name" style="font-size:17px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.3);"></span>' +
+            '</div></div>' +
+            /* 内容区 */
+            '<div id="feed-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:36px 12px 20px;background:#f0f2f5;"></div>';
         d.addEventListener('click', function (e) { if (e.target === d) close(); });
         document.body.appendChild(d);
-        modalEl = d;
-        d.querySelector('#feed-close').addEventListener('click', close);
+        pageEl = d;
+        d.querySelector('#feed-back').addEventListener('click', close);
+        d.querySelector('#feed-pub').addEventListener('click', openPublish);
         return d;
     }
-    function open() { var d = ensureModal(); d.style.display = 'flex'; refreshIdentities(); renderAll(); }
-    function close() { var d = modalEl; if (d) d.style.display = 'none'; }
+    function open() { var d = ensurePage(); d.style.display = 'flex'; refreshIdentities(); renderAll(); }
+    function close() { var d = pageEl; if (d) d.style.display = 'none'; }
     window.openFeed = open;
 
     /* ============ 渲染 ============ */
     function renderAll() {
-        var body = modalEl.querySelector('#feed-body');
+        var page = pageEl;
+        if (!page) return;
+        var avEl = page.querySelector('#feed-cover-av');
+        if (avEl) avEl.innerHTML = avatarHtml(TA, 52);
+        var nmEl = page.querySelector('#feed-cover-name');
+        if (nmEl) nmEl.textContent = TA.name;
+
+        var body = page.querySelector('#feed-body');
         var h = '';
 
-        /* 封面 */
-        h += '<div style="height:110px;border-radius:14px;background:linear-gradient(135deg,#a8d8ea 0%,#cfe9f7 40%,#f5d0e0 100%);position:relative;margin-bottom:44px;overflow:visible;">';
-        h += '<div style="position:absolute;left:14px;bottom:-26px;width:54px;height:54px;border-radius:50%;background:var(--primary-bg,#fff);display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid var(--secondary-bg,#fff);">' + avatarHtml(TA, 48) + '</div>';
-        h += '<div style="position:absolute;left:80px;bottom:-20px;font-size:14px;font-weight:700;color:var(--text-primary);">' + esc(TA.name) + '</div>';
-        h += '<div style="position:absolute;right:12px;bottom:10px;font-size:11px;color:rgba(0,0,0,0.45);">海风轻 · 第 ' + (feeds.length || 0) + ' 条动态</div>';
-        h += '</div>';
-
-        /* 发布框 */
-        h += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">';
-        h += '<span style="font-size:22px;">🦊</span>';
-        h += '<input id="feed-input" placeholder="说点什么…（也可以配张图）" style="flex:1;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border-color);border-radius:18px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;outline:none;">';
-        h += '<label for="feed-img" style="font-size:18px;cursor:pointer;padding:4px;">🖼️</label>';
-        h += '<input id="feed-img" type="file" accept="image/*" style="display:none;">';
-        h += '<button id="feed-send" style="padding:8px 14px;border:none;border-radius:16px;background:var(--accent-color,#8899aa);color:#fff;font-size:13px;cursor:pointer;">发</button>';
-        h += '</div>';
-
-        /* 动态流 */
         if (feeds.length === 0) {
-            h += '<div style="text-align:center;color:var(--text-secondary);font-size:13px;padding:30px 0;">还没有动态，说点什么吧</div>';
+            h += '<div style="text-align:center;color:#999;font-size:13px;padding:40px 0;">还没有动态，点右上角发布吧</div>';
         } else {
             for (var i = feeds.length - 1; i >= 0; i--) {
                 var f = feeds[i];
                 var isMe = f.from === 'me';
-                h += '<div style="display:flex;gap:10px;margin-bottom:16px;">';
-                h += avatarHtml(isMe ? ME : TA, 28);
-                h += '<div style="flex:1;background:var(--primary-bg,#f7f7f7);border-radius:12px;padding:10px 12px;">';
-                h += '<div style="font-size:12px;font-weight:700;margin-bottom:2px;">' + (isMe ? ME.name : TA.name) + '</div>';
-                h += '<div style="font-size:13px;line-height:1.5;word-break:break-word;white-space:pre-wrap;">' + esc(f.text) + '</div>';
+                var person = isMe ? ME : TA;
+                h += '<div style="background:#ffffff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:12px;margin-bottom:10px;">';
+                h += '<div style="display:flex;align-items:center;margin-bottom:8px;">';
+                h += '<span style="margin-right:8px;">' + avatarHtml(person, 32) + '</span>';
+                h += '<span style="font-size:13px;font-weight:600;color:#1a1a1a;">' + esc(person.name) + '</span>';
+                h += '<span style="font-size:11px;color:#aaa;margin-left:auto;">' + timeStr(f.time) + '</span>';
+                h += '</div>';
+                h += '<div style="font-size:14px;line-height:1.55;word-break:break-word;white-space:pre-wrap;color:#2a2a2a;">' + esc(f.text) + '</div>';
                 if (f.img) {
                     h += '<img src="' + f.img + '" style="max-width:100%;border-radius:10px;margin-top:8px;display:block;max-height:220px;object-fit:cover;">';
                 }
-                h += '<div style="font-size:10px;color:var(--text-secondary);margin-top:6px;">' + timeStr(f.time) + '</div>';
-
-                /* 点赞 */
                 var liked = f.likes.indexOf(ME.name) >= 0;
-                h += '<div style="display:flex;align-items:center;gap:14px;margin-top:6px;padding-top:8px;border-top:1px solid var(--border-color);">';
-                h += '<span id="like-' + f.id + '" style="font-size:12px;cursor:pointer;color:' + (liked ? '#e04f5f' : 'var(--text-secondary)') + ';">' + (liked ? '❤️ 已赞' : '🤍 点赞') + '</span>';
-                h += '<span id="cmt-' + f.id + '" style="font-size:12px;cursor:pointer;color:var(--text-secondary);">💬 评论</span>';
+                h += '<div style="display:flex;align-items:center;gap:16px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.06);">';
+                h += '<span id="like-' + f.id + '" style="font-size:12px;cursor:pointer;color:' + (liked ? '#e04f5f' : '#777') + ';">' + (liked ? '❤️ 已赞' : '🤍 赞') + '</span>';
+                h += '<span id="cmt-' + f.id + '" style="font-size:12px;cursor:pointer;color:#777;">💬 评论</span>';
                 if (f.likes.length) {
-                    h += '<span style="font-size:11px;color:var(--text-secondary);margin-left:auto;">' + f.likes.map(esc).join('、') + ' 赞了</span>';
+                    h += '<span style="font-size:11px;color:#999;margin-left:auto;">' + f.likes.map(esc).join('、') + ' 赞了</span>';
                 }
                 h += '</div>';
-
-                /* 评论区 */
                 if (f.comments && f.comments.length) {
-                    h += '<div style="margin-top:6px;background:rgba(0,0,0,0.03);border-radius:8px;padding:6px 8px;">';
+                    h += '<div style="margin-top:6px;background:#f7f7f7;border-radius:8px;padding:6px 8px;">';
                     for (var c = 0; c < f.comments.length; c++) {
                         var cm = f.comments[c];
-                        h += '<div style="font-size:12px;margin:2px 0;"><b>' + esc(cm.from) + '：</b>' + esc(cm.text) + ' <span style="color:var(--text-secondary);font-size:10px;">' + timeStr(cm.time) + '</span></div>';
+                        h += '<div style="font-size:12px;margin:2px 0;color:#555;"><b>' + esc(cm.from) + '：</b>' + esc(cm.text) + ' <span style="color:#aaa;font-size:10px;">' + timeStr(cm.time) + '</span></div>';
                     }
                     h += '</div>';
                 }
                 h += '<div id="cmtbox-' + f.id + '" style="display:none;margin-top:6px;">';
-                h += '<div style="display:flex;gap:6px;"><input id="cmtin-' + f.id + '" placeholder="回复 ' + (isMe ? TA.name : ME.name) + '…" style="flex:1;box-sizing:border-box;padding:7px 10px;border:1px solid var(--border-color);border-radius:12px;background:var(--secondary-bg);color:var(--text-primary);font-size:12px;outline:none;"><button id="cmtsend-' + f.id + '" style="padding:6px 10px;border:none;border-radius:12px;background:var(--accent-color,#8899aa);color:#fff;font-size:12px;cursor:pointer;">发</button></div>';
+                h += '<div style="display:flex;gap:6px;"><input id="cmtin-' + f.id + '" placeholder="回复 ' + esc(person.name) + '…" style="flex:1;box-sizing:border-box;padding:7px 10px;border:1px solid #e0e0e0;border-radius:14px;background:#fff;color:#333;font-size:12px;outline:none;"><button id="cmtsend-' + f.id + '" style="padding:6px 12px;border:none;border-radius:14px;background:#1a1a1a;color:#fff;font-size:12px;cursor:pointer;">发</button></div>';
                 h += '</div>';
-
-                h += '</div></div>';
+                h += '</div>';
             }
         }
         body.innerHTML = h;
-        body.scrollTop = body.scrollHeight;
-
-        /* 绑定事件 */
-        var sendBtn = document.getElementById('feed-send');
-        if (sendBtn) sendBtn.addEventListener('click', function () { doPost(); });
-        var input = document.getElementById('feed-input');
-        if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') doPost(); });
-        var imgInput = document.getElementById('feed-img');
-        if (imgInput) imgInput.addEventListener('change', function (e) { pendingImg = e.target.files[0]; if (pendingImg) toast('🖼️ 图片已选，点「发」上传'); });
 
         for (var j = 0; j < feeds.length; j++) {
             (function (f) {
@@ -190,7 +177,7 @@
                 var cmtEl = document.getElementById('cmt-' + f.id);
                 if (cmtEl) cmtEl.addEventListener('click', function () {
                     var box = document.getElementById('cmtbox-' + f.id);
-                    if (box) box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+                    if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
                 });
                 var sendEl = document.getElementById('cmtsend-' + f.id);
                 if (sendEl) sendEl.addEventListener('click', function () { doComment(f); });
@@ -198,11 +185,65 @@
         }
     }
 
+    /* ============ 发布面板（底部弹出） ============ */
+    var pubEl = null;
     var pendingImg = null;
 
-    /* ============ 发布 ============ */
+    function ensurePublish() {
+        if (pubEl && document.body.contains(pubEl)) return pubEl;
+        var d = document.createElement('div');
+        d.id = 'feed-publish';
+        d.style.cssText = 'position:fixed;inset:0;z-index:100003;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center;';
+        d.innerHTML =
+            '<div style="width:100%;max-width:560px;max-height:88vh;background:#ffffff;border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid rgba(0,0,0,0.06);">' +
+            '<button id="pub-close" style="background:none;border:none;color:#666;font-size:15px;cursor:pointer;">取消</button>' +
+            '<span style="font-size:16px;font-weight:700;">发布动态</span>' +
+            '<button id="pub-send" style="background:#1a1a1a;border:none;color:#fff;font-size:13px;padding:6px 14px;border-radius:16px;cursor:pointer;font-weight:600;">发布</button>' +
+            '</div>' +
+            '<div style="padding:12px 16px 20px;">' +
+            '<div style="display:flex;gap:10px;margin-bottom:10px;">' +
+            '<span>' + avatarHtml(ME, 34) + '</span>' +
+            '<textarea id="pub-text" placeholder="说点什么…" style="flex:1;min-height:70px;border:none;outline:none;font-size:14px;line-height:1.5;color:#333;resize:none;font-family:inherit;background:transparent;"></textarea>' +
+            '</div>' +
+            '<div id="pub-img-preview" style="display:none;margin-bottom:10px;"><img id="pub-img-pv" style="max-width:120px;max-height:120px;border-radius:10px;display:block;"></div>' +
+            '<label for="pub-file" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#555;cursor:pointer;padding:6px 12px;background:#f0f2f5;border-radius:16px;">🖼️ 添加图片</label>' +
+            '<input id="pub-file" type="file" accept="image/*" style="display:none;">' +
+            '</div></div>';
+        d.addEventListener('click', function (e) { if (e.target === d) closePublish(); });
+        document.body.appendChild(d);
+        pubEl = d;
+        d.querySelector('#pub-close').addEventListener('click', closePublish);
+        d.querySelector('#pub-send').addEventListener('click', doPost);
+        var fi = d.querySelector('#pub-file');
+        if (fi) fi.addEventListener('change', function (e) {
+            pendingImg = e.target.files[0];
+            if (pendingImg) {
+                var r = new FileReader();
+                r.onload = function (ev) {
+                    var pv = document.getElementById('pub-img-preview');
+                    var pv2 = document.getElementById('pub-img-pv');
+                    if (pv && pv2) { pv.style.display = 'block'; pv2.src = ev.target.result; }
+                };
+                r.readAsDataURL(pendingImg);
+            }
+        });
+        return d;
+    }
+    function openPublish() {
+        refreshIdentities();
+        var d = ensurePublish();
+        d.style.display = 'flex';
+        var t = d.querySelector('#pub-text');
+        if (t) { t.value = ''; setTimeout(function () { t.focus(); }, 200); }
+        pendingImg = null;
+        var pv = document.getElementById('pub-img-preview');
+        if (pv) pv.style.display = 'none';
+    }
+    function closePublish() { var d = pubEl; if (d) d.style.display = 'none'; pendingImg = null; }
+
     function doPost() {
-        var input = document.getElementById('feed-input');
+        var input = document.getElementById('pub-text');
         var text = input ? input.value.trim() : '';
         if (!text && !pendingImg) { toast('写点什么再发呀'); return; }
         var f = { id: 'f' + Date.now(), from: 'me', text: text, img: '', time: Date.now(), likes: [], comments: [] };
@@ -212,19 +253,19 @@
                 pendingImg = null;
                 feeds.push(f);
                 save();
+                closePublish();
                 renderAll();
                 maybeTaReact(f);
             });
         } else {
             feeds.push(f);
             save();
+            closePublish();
             renderAll();
             maybeTaReact(f);
         }
-        if (input) input.value = '';
     }
 
-    /* ============ 图片压缩 ============ */
     function compressImage(file, cb) {
         var reader = new FileReader();
         reader.onload = function (e) {
@@ -252,10 +293,9 @@
         if (idx >= 0) f.likes.splice(idx, 1);
         else {
             f.likes.push(ME.name);
-            /* TA 有概率回赞 */
             if (Math.random() < 0.5) {
                 setTimeout(function () {
-                    if (f.likes.indexOf(TA.name) < 0) { f.likes.push(TA.name); save(); renderAll(); toast('🐳 沈屿也赞了你'); }
+                    if (f.likes.indexOf(TA.name) < 0) { f.likes.push(TA.name); save(); renderAll(); toast('🐳 ' + TA.name + '也赞了你'); }
                 }, 3000 + Math.random() * 6000);
             }
         }
@@ -263,7 +303,15 @@
         renderAll();
     }
 
-    /* ============ 评论 ============ */
+    /* ============ 评论（TA的评论从字卡库抽） ============ */
+    function taCommentText() {
+        var pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
+            ? customReplies.filter(function (r) { return String(r || '').trim(); })
+            : [];
+        if (pool.length >= 1) return String(pick(pool)).trim();
+        return pick(TA_FALLBACK);
+    }
+
     function doComment(f) {
         var input = document.getElementById('cmtin-' + f.id);
         var text = input ? input.value.trim() : '';
@@ -272,50 +320,20 @@
         f.comments.push({ from: ME.name, text: text, time: Date.now() });
         save();
         renderAll();
-        /* TA 有概率回评论 */
         if (Math.random() < 0.6) {
             setTimeout(function () {
-                var reply = pick(TA_COMMENTS);
-                f.comments.push({ from: TA.name, text: reply, time: Date.now() });
+                f.comments.push({ from: TA.name, text: taCommentText(), time: Date.now() });
                 save();
                 renderAll();
-                toast('🐳 沈屿回复了你');
+                toast('🐳 ' + TA.name + '回复了你');
             }, 4000 + Math.random() * 8000);
         }
     }
 
-    /* ============ TA 自动回应我的动态 ============ */
-    var TA_COMMENTS = [
-        '想你了',
-        '这条我看了好几遍',
-        '等我回来，带你去',
-        '今天风很轻，适合想你',
-        '记下来了',
-        '你写什么都好看',
-        '蓝门前的黄昏，还记得吗',
-        '三花猫也替你着急',
-        '海浪都听懂了'
+    var TA_FALLBACK = [
+        '想你了', '这条我看了好几遍', '等我回来，带你去', '今天风很轻，适合想你',
+        '记下来了', '你写什么都好看', '蓝门前的黄昏，还记得吗', '三花猫也替你着急', '海浪都听懂了'
     ];
-
-    function maybeTaReact(f) {
-        if (Math.random() < 0.8) {
-            setTimeout(function () {
-                if (f.likes.indexOf(TA.name) < 0) { f.likes.push(TA.name); save(); renderAll(); toast('🐳 沈屿赞了你的动态'); }
-            }, 6000 + Math.random() * 12000);
-        }
-        if (Math.random() < 0.5) {
-            setTimeout(function () {
-                var reply = pick(TA_COMMENTS);
-                f.comments = f.comments || [];
-                f.comments.push({ from: TA.name, text: reply, time: Date.now() });
-                save();
-                renderAll();
-                toast('🐳 沈屿评论了你');
-            }, 15000 + Math.random() * 20000);
-        }
-    }
-
-    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
     /* ============ TA 用字卡拼朋友圈（像拼信一样随机） ============ */
     function taPost() {
@@ -341,9 +359,28 @@
             }
         } catch (e) {}
     }
-    /* 打开一段时间后 TA 可能发一条；之后每隔一阵也可能发 */
     setTimeout(function () { if (Math.random() < 0.7) taPost(); }, 150000 + Math.random() * 180000);
     setInterval(function () { if (Math.random() < 0.6) taPost(); }, (30 + Math.random() * 60) * 60 * 1000);
+
+    /* ============ TA 自动回应我的动态 ============ */
+    function maybeTaReact(f) {
+        if (Math.random() < 0.8) {
+            setTimeout(function () {
+                if (f.likes.indexOf(TA.name) < 0) { f.likes.push(TA.name); save(); renderAll(); toast('🐳 ' + TA.name + '赞了你的动态'); }
+            }, 6000 + Math.random() * 12000);
+        }
+        if (Math.random() < 0.5) {
+            setTimeout(function () {
+                f.comments = f.comments || [];
+                f.comments.push({ from: TA.name, text: taCommentText(), time: Date.now() });
+                save();
+                renderAll();
+                toast('🐳 ' + TA.name + '评论了你');
+            }, 15000 + Math.random() * 20000);
+        }
+    }
+
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
     function toast(msg) {
         if (typeof window.toast === 'function') { window.toast(msg); return; }
