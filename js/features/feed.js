@@ -7,7 +7,9 @@
  * ========================================================= */
 (function () {
     var KEY = 'lilidreamlove_feed';
+    var BG_KEY = 'lilidreamlove_feed_bg';
     var feeds = [];
+    var feedBg = null;
 
     var TA = { name: '沈屿', avatar: null };
     var ME = { name: '栗栗', avatar: null };
@@ -42,6 +44,7 @@
     function load() {
         if (typeof localforage === 'undefined') return;
         refreshIdentities();
+        loadBg();
         localforage.getItem(KEY).then(function (v) {
             if (v && Array.isArray(v)) {
                 feeds = v;
@@ -98,12 +101,15 @@
             '<span style="font-size:16px;font-weight:700;">朋友圈</span>' +
             '<button id="feed-pub" style="background:none;border:none;font-size:14px;color:#1a1a1a;padding:8px;cursor:pointer;font-weight:600;">✎ 发布</button>' +
             '</div>' +
-            /* 封面 */
-            '<div id="feed-cover" style="flex-shrink:0;height:150px;background:linear-gradient(135deg,#a8d8ea 0%,#cfe9f7 45%,#f5d0e0 100%);position:relative;">' +
-            '<div style="position:absolute;left:14px;bottom:-24px;display:flex;align-items:center;gap:10px;">' +
-            '<span id="feed-cover-av" style="width:56px;height:56px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.12);"></span>' +
+            /* 封面：自己的头像在右边 + 可自定义背景 */
+            '<div id="feed-cover" style="flex-shrink:0;height:150px;background:linear-gradient(135deg,#a8d8ea 0%,#cfe9f7 45%,#f5d0e0 100%);position:relative;background-size:cover;background-position:center;cursor:pointer;">' +
+            '<span style="position:absolute;top:10px;right:12px;font-size:13px;background:rgba(0,0,0,0.25);border-radius:12px;padding:4px 9px;color:#fff;">📷 换背景</span>' +
+            '<div style="position:absolute;right:14px;bottom:-24px;display:flex;align-items:center;gap:10px;">' +
             '<span id="feed-cover-name" style="font-size:17px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.3);"></span>' +
-            '</div></div>' +
+            '<span id="feed-cover-av" style="width:56px;height:56px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.12);"></span>' +
+            '</div>' +
+            '<input id="feed-bg-file" type="file" accept="image/*" style="display:none;">' +
+            '</div>' +
             /* 内容区 */
             '<div id="feed-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:36px 12px 20px;background:#f0f2f5;"></div>';
         d.addEventListener('click', function (e) { if (e.target === d) close(); });
@@ -111,20 +117,56 @@
         pageEl = d;
         d.querySelector('#feed-back').addEventListener('click', close);
         d.querySelector('#feed-pub').addEventListener('click', openPublish);
+        var cover = d.querySelector('#feed-cover');
+        if (cover) cover.addEventListener('click', function () {
+            var fi = document.getElementById('feed-bg-file');
+            if (fi) fi.click();
+        });
+        var bf = d.querySelector('#feed-bg-file');
+        if (bf) bf.addEventListener('change', changeBg);
         return d;
     }
     function open() { var d = ensurePage(); d.style.display = 'flex'; refreshIdentities(); renderAll(); }
     function close() { var d = pageEl; if (d) d.style.display = 'none'; }
     window.openFeed = open;
 
+    /* ============ 自定义背景 ============ */
+    function loadBg() {
+        if (typeof localforage === 'undefined') return;
+        localforage.getItem(BG_KEY).then(function (v) {
+            if (v) { feedBg = v; applyBg(); }
+        }).catch(function () {});
+    }
+    function saveBg() {
+        if (typeof localforage !== 'undefined') localforage.setItem(BG_KEY, feedBg).catch(function () {});
+    }
+    function applyBg() {
+        var c = pageEl ? pageEl.querySelector('#feed-cover') : null;
+        if (!c) return;
+        if (feedBg) c.style.backgroundImage = 'url("' + feedBg + '")';
+        else c.style.backgroundImage = '';
+    }
+    function changeBg() {
+        var fi = document.getElementById('feed-bg-file');
+        if (fi && fi.files && fi.files[0]) {
+            compressImage(fi.files[0], function (url) {
+                feedBg = url;
+                saveBg();
+                applyBg();
+                toast('📷 背景已更新');
+            });
+        }
+    }
+
     /* ============ 渲染 ============ */
     function renderAll() {
         var page = pageEl;
         if (!page) return;
         var avEl = page.querySelector('#feed-cover-av');
-        if (avEl) avEl.innerHTML = avatarHtml(TA, 52);
+        if (avEl) avEl.innerHTML = avatarHtml(ME, 52);
         var nmEl = page.querySelector('#feed-cover-name');
-        if (nmEl) nmEl.textContent = TA.name;
+        if (nmEl) nmEl.textContent = ME.name;
+        applyBg();
 
         var body = page.querySelector('#feed-body');
         var h = '';
