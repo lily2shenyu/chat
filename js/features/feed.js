@@ -345,13 +345,34 @@
         renderAll();
     }
 
-    /* ============ 评论（TA的评论从字卡库抽） ============ */
+    /* 字卡 + emoji + 表情包混合库 */
+    function allEmojis() {
+        var arr = [];
+        try { if (typeof CONSTANTS !== 'undefined' && CONSTANTS.REPLY_EMOJIS && Array.isArray(CONSTANTS.REPLY_EMOJIS)) arr = arr.concat(CONSTANTS.REPLY_EMOJIS); } catch (e) {}
+        try { if (typeof customEmojis !== 'undefined' && Array.isArray(customEmojis)) arr = arr.concat(customEmojis); } catch (e) {}
+        return arr.filter(function (s) { return String(s || '').trim(); });
+    }
+    function allStickers() {
+        try {
+            if (typeof stickerLibrary !== 'undefined' && Array.isArray(stickerLibrary)) {
+                return stickerLibrary.filter(function (s) { return String(s || '').trim(); });
+            }
+        } catch (e) {}
+        return [];
+    }
+    function randSticker() { var s = allStickers(); return s.length ? pick(s) : null; }
+
+    /* ============ 评论（TA的评论从字卡库抽，带emoji） ============ */
     function taCommentText() {
         var pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
             ? customReplies.filter(function (r) { return String(r || '').trim(); })
             : [];
-        if (pool.length >= 1) return String(pick(pool)).trim();
-        return pick(TA_FALLBACK);
+        var base = pool.length >= 1 ? String(pick(pool)).trim() : pick(TA_FALLBACK);
+        var ems = allEmojis();
+        if (ems.length && Math.random() < 0.6) {
+            base = base + ' ' + pick(ems);
+        }
+        return base;
     }
 
     function doComment(f) {
@@ -396,13 +417,15 @@
             } else {
                 text = pick(['今天风很轻，适合想你', '窗外那棵玉兰又开了一朵', '港口今天落日很好看', '潮起潮落，我都在', '三花猫又在玉兰树下等你']);
             }
-            /* 随机加 emoji，让动态更活 */
-            if (Math.random() < 0.8) {
-                var em = pick(TA_EMOJI);
-                if (Math.random() < 0.4) text = em + ' ' + text;
-                else text = text + ' ' + em;
+            /* 从字卡库混入 emoji */
+            var ems = allEmojis();
+            if (ems.length && Math.random() < 0.5) {
+                var em = pick(ems);
+                text = Math.random() < 0.4 ? em + ' ' + text : text + ' ' + em;
             }
-            var f = { id: 'ta' + Date.now(), from: 'ta', text: text, img: '', time: Date.now(), likes: [], comments: [] };
+            /* 有概率用表情包当配图 */
+            var st = Math.random() < 0.35 ? randSticker() : null;
+            var f = { id: 'ta' + Date.now(), from: 'ta', text: text, img: st || '', time: Date.now(), likes: [], comments: [] };
             feeds.push(f);
             save();
             renderAll();
