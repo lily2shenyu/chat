@@ -8,8 +8,29 @@
     var KEY = 'lilidreamlove_feed';
     var feeds = [];
 
-    var TA = { name: '沈屿', avatar: '🐳' };
-    var ME = { name: '栗栗', avatar: '🦊' };
+    var TA = { name: '沈屿', avatar: null };
+    var ME = { name: '栗栗', avatar: null };
+
+    /* 读取聊天里的真实头像和名字 */
+    function refreshIdentities() {
+        try {
+            var pImg = document.querySelector('#partner-avatar img, [id*="partner-avatar"] img, .partner-avatar img');
+            var mImg = document.querySelector('#my-avatar img, [id*="my-avatar"] img');
+            var pName = (typeof settings !== 'undefined' && settings.partnerName)
+                || (document.getElementById('partner-name') ? document.getElementById('partner-name').textContent.trim() : '')
+                || '沈屿';
+            var mName = (typeof settings !== 'undefined' && settings.myName) || '栗栗';
+            TA.name = pName; TA.avatar = pImg ? pImg.src : null;
+            ME.name = mName; ME.avatar = mImg ? mImg.src : null;
+        } catch (e) {}
+    }
+    function avatarHtml(p, size) {
+        size = size || 26;
+        if (p.avatar) {
+            return '<img src="' + p.avatar + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;flex-shrink:0;display:inline-block;">';
+        }
+        return '<span style="font-size:' + size + 'px;flex-shrink:0;">' + (p === TA ? '🐳' : '🦊') + '</span>';
+    }
 
     /* ============ 预置几条初始动态（第一次打开时） ============ */
     var seed = [
@@ -20,6 +41,7 @@
 
     function load() {
         if (typeof localforage === 'undefined') return;
+        refreshIdentities();
         localforage.getItem(KEY).then(function (v) {
             if (v && Array.isArray(v)) {
                 feeds = v;
@@ -28,7 +50,13 @@
                 for (var i = 0; i < seed.length; i++) {
                     var s = seed[i];
                     s.time = now - (i + 1) * 3600 * 1000;
-                    if (s.comments) for (var j = 0; j < s.comments.length; j++) s.comments[j].time = s.time + 60000;
+                    if (s.likes) s.likes = s.likes.map(function (n) { return n === '栗栗' ? ME.name : (n === '沈屿' ? TA.name : n); });
+                    if (s.comments) {
+                        for (var j = 0; j < s.comments.length; j++) {
+                            s.comments[j].from = s.comments[j].from === '栗栗' ? ME.name : (s.comments[j].from === '沈屿' ? TA.name : s.comments[j].from);
+                            s.comments[j].time = s.time + 60000;
+                        }
+                    }
                     feeds.push(s);
                 }
                 save();
@@ -76,7 +104,7 @@
         d.querySelector('#feed-close').addEventListener('click', close);
         return d;
     }
-    function open() { var d = ensureModal(); d.style.display = 'flex'; renderAll(); }
+    function open() { var d = ensureModal(); d.style.display = 'flex'; refreshIdentities(); renderAll(); }
     function close() { var d = modalEl; if (d) d.style.display = 'none'; }
     window.openFeed = open;
 
@@ -87,8 +115,8 @@
 
         /* 封面 */
         h += '<div style="height:110px;border-radius:14px;background:linear-gradient(135deg,#a8d8ea 0%,#cfe9f7 40%,#f5d0e0 100%);position:relative;margin-bottom:44px;overflow:visible;">';
-        h += '<div style="position:absolute;left:14px;bottom:-26px;width:52px;height:52px;border-radius:50%;background:var(--primary-bg,#fff);display:flex;align-items:center;justify-content:center;font-size:26px;border:3px solid var(--secondary-bg,#fff);">🐳</div>';
-        h += '<div style="position:absolute;left:78px;bottom:-20px;font-size:14px;font-weight:700;color:var(--text-primary);">沈屿</div>';
+        h += '<div style="position:absolute;left:14px;bottom:-26px;width:54px;height:54px;border-radius:50%;background:var(--primary-bg,#fff);display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid var(--secondary-bg,#fff);">' + avatarHtml(TA, 48) + '</div>';
+        h += '<div style="position:absolute;left:80px;bottom:-20px;font-size:14px;font-weight:700;color:var(--text-primary);">' + esc(TA.name) + '</div>';
         h += '<div style="position:absolute;right:12px;bottom:10px;font-size:11px;color:rgba(0,0,0,0.45);">海风轻 · 第 ' + (feeds.length || 0) + ' 条动态</div>';
         h += '</div>';
 
@@ -109,7 +137,7 @@
                 var f = feeds[i];
                 var isMe = f.from === 'me';
                 h += '<div style="display:flex;gap:10px;margin-bottom:16px;">';
-                h += '<span style="font-size:26px;flex-shrink:0;">' + (isMe ? ME.avatar : TA.avatar) + '</span>';
+                h += avatarHtml(isMe ? ME : TA, 28);
                 h += '<div style="flex:1;background:var(--primary-bg,#f7f7f7);border-radius:12px;padding:10px 12px;">';
                 h += '<div style="font-size:12px;font-weight:700;margin-bottom:2px;">' + (isMe ? ME.name : TA.name) + '</div>';
                 h += '<div style="font-size:13px;line-height:1.5;word-break:break-word;white-space:pre-wrap;">' + esc(f.text) + '</div>';
@@ -288,6 +316,34 @@
     }
 
     function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    /* ============ TA 用字卡拼朋友圈（像拼信一样随机） ============ */
+    function taPost() {
+        try {
+            var pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
+                ? customReplies.filter(function (r) { return String(r || '').trim(); })
+                : [];
+            var text;
+            if (pool.length >= 1) {
+                var n = 1 + Math.floor(Math.random() * Math.min(3, pool.length));
+                var lines = [];
+                for (var i = 0; i < n; i++) lines.push(String(pool[Math.floor(Math.random() * pool.length)]).trim());
+                text = lines.join(' ');
+            } else {
+                text = pick(['今天风很轻，适合想你', '窗外那棵玉兰又开了一朵', '港口今天落日很好看', '潮起潮落，我都在', '三花猫又在玉兰树下等你']);
+            }
+            var f = { id: 'ta' + Date.now(), from: 'ta', text: text, img: '', time: Date.now(), likes: [], comments: [] };
+            feeds.push(f);
+            save();
+            renderAll();
+            if (typeof window._sendPartnerNotification === 'function') {
+                window._sendPartnerNotification('📖 ' + TA.name + '发了一条朋友圈', '用字卡拼的，去看看吧');
+            }
+        } catch (e) {}
+    }
+    /* 打开一段时间后 TA 可能发一条；之后每隔一阵也可能发 */
+    setTimeout(function () { if (Math.random() < 0.7) taPost(); }, 150000 + Math.random() * 180000);
+    setInterval(function () { if (Math.random() < 0.6) taPost(); }, (30 + Math.random() * 60) * 60 * 1000);
 
     function toast(msg) {
         if (typeof window.toast === 'function') { window.toast(msg); return; }
