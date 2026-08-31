@@ -88,7 +88,7 @@
         body.innerHTML = h;
         body.querySelector('#dq-add-choice').addEventListener('click', function () {
             var q = body.querySelector('#dq-q').value.trim();
-            var opts = body.querySelector('#dq-opts').value.split(/[、,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
+            var opts = body.querySelector('#dq-opts').value.split(/[、,，\/\s]+/).map(function (s) { return s.trim(); }).filter(Boolean);
             if (!q || !opts.length) { toast('题目和选项都要填'); return; }
             dq.questions.push({ type: 'choice', q: q, opts: opts });
             save(); renderManage();
@@ -149,8 +149,9 @@
         var h = '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6;">💌 把这份问卷寄给我，我会像回信一样答好，送到你面前。</div>';
         h += dq.questions.map(function (q, i) {
             if (q.type === 'choice') {
+                var ABC = 'ABCDEFGH';
                 return '<div style="font-size:14px;font-weight:600;margin:8px 0 4px;">' + (i + 1) + '. ' + q.q.replace(/[<>&]/g, '') + '</div>' +
-                    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px;">选项：' + q.opts.map(function (o) { return o.replace(/[<>&]/g, ''); }).join('、') + '</div>';
+                    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px;">选项：' + q.opts.map(function (o, oi) { return ABC[oi] + '.' + o.replace(/[<>&]/g, ''); }).join('　') + '</div>';
             }
             return '<div style="font-size:14px;font-weight:600;margin:8px 0 4px;">' + (i + 1) + '. ' + q.q.replace(/[<>&]/g, '') + '（填空题，我会从字卡里答）</div>';
         }).join('');
@@ -200,10 +201,12 @@
         var lines = [];
         var food = dq.images.length ? dq.images[Math.floor(Math.random() * dq.images.length)] : null;
         var cardPool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies)) ? customReplies : [];
+        var ABC = 'ABCDEFGH';
         dq.questions.forEach(function (q) {
             if (q.type === 'choice') {
-                var pick = q.opts[Math.floor(Math.random() * q.opts.length)];
-                lines.push(q.q + '：' + (pick || '—'));
+                var idx = Math.floor(Math.random() * q.opts.length);
+                var pick = q.opts[idx];
+                lines.push(q.q + '：' + (pick || '—') + (q.opts.length > 1 ? '（我选 ' + ABC[idx] + '）' : ''));
             } else {
                 var card = cardPool.length ? String(cardPool[Math.floor(Math.random() * cardPool.length)]) : '（字卡库空的，先填一句吧）';
                 lines.push(q.q + '：' + card);
@@ -313,6 +316,44 @@
         if (typeof window._sendPartnerNotification === 'function') {
             window._sendPartnerNotification(settings.partnerName || '对方', '💌 沈屿有个问题想问你');
         }
+        /* 实时弹窗问答卡：跳出来，答完自动消失 */
+        popQuestionCard(q);
+    }
+
+    /* 实时弹窗问答卡 */
+    function popQuestionCard(q) {
+        try {
+            var old = document.getElementById('dq-pop');
+            if (old) old.remove();
+            var card = document.createElement('div');
+            card.id = 'dq-pop';
+            card.style.cssText = 'position:fixed;left:12px;right:12px;bottom:84px;z-index:300000;background:#fff;border-radius:18px;padding:14px 16px;color:#2a2a2a;box-shadow:0 10px 40px rgba(0,0,0,0.28);border:1px solid rgba(0,0,0,0.06);';
+            card.innerHTML =
+                '<div style="font-size:11px;color:#8a8a9a;margin-bottom:4px;">💌 沈屿问你</div>' +
+                '<div style="font-size:14px;font-weight:600;margin-bottom:10px;line-height:1.5;">' + String(q || '').replace(/[<>&]/g, '') + '</div>' +
+                '<div style="display:flex;gap:8px;">' +
+                '<input id="dq-pop-in" placeholder="答一下嘛…" style="flex:1;box-sizing:border-box;padding:9px 12px;border:1px solid #ddd;border-radius:12px;font-size:13px;outline:none;">' +
+                '<button id="dq-pop-ok" style="padding:9px 16px;border:none;border-radius:12px;background:#3d7ea6;color:#fff;font-size:13px;cursor:pointer;">回答</button>' +
+                '</div>' +
+                '<div style="text-align:right;margin-top:6px;"><span id="dq-pop-close" style="font-size:11px;color:#aaa;cursor:pointer;">稍后再答</span></div>';
+            document.body.appendChild(card);
+            var inp = card.querySelector('#dq-pop-in');
+            card.querySelector('#dq-pop-ok').addEventListener('click', function () {
+                var v = inp.value.trim();
+                if (!v) { toast('说点什么再答呀'); return; }
+                var answers = [];
+                try { answers = JSON.parse(localStorage.getItem(SQ_ANS_KEY) || '[]'); } catch (e) {}
+                answers.unshift({ q: q, a: v, t: Date.now() });
+                answers = answers.slice(0, 20);
+                localStorage.setItem(SQ_ANS_KEY, JSON.stringify(answers));
+                card.remove();
+                toast('💌 你的回答我记下啦');
+                if (typeof window.__sqRender === 'function') window.__sqRender();
+            });
+            card.querySelector('#dq-pop-close').addEventListener('click', function () { card.remove(); });
+            inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') card.querySelector('#dq-pop-ok').click(); });
+            setTimeout(function () { try { inp.focus(); } catch (e) {} }, 250);
+        } catch (e) {}
     }
     window.__sqMaybeSend = sendShenyuQuestion;
     /* 定时：隔一段时间（完全随机 30~150 分钟）寄一题 */
@@ -331,12 +372,14 @@
         try { asked = JSON.parse(localStorage.getItem(SQ_KEY) || '[]'); } catch (e) {}
         var answers = [];
         try { answers = JSON.parse(localStorage.getItem(SQ_ANS_KEY) || '[]'); } catch (e) {}
+        /* 按题目匹配答案（不按位置，避免新问题把旧答案顶串） */
+        var ansMap = {};
+        answers.forEach(function (x) { if (x && x.q) ansMap[x.q] = x.a; });
         if (!asked.length) {
             body.innerHTML = '<div style="text-align:center;padding:30px 0;color:var(--text-secondary);font-size:13px;">我还没寄出问题～<br>等我在聊天里问你吧，或先答下面的题库～</div>';
         } else {
             body.innerHTML = asked.map(function (a, i) {
-                var av = answers[i];
-                if (av && typeof av === 'object') av = av.a || '';
+                var av = ansMap[a.q] || '';
                 var ans = av ? '<div style="font-size:12px;color:var(--accent-color);margin-top:4px;">你的回答：' + String(av).replace(/[<>&]/g, '') + '</div>' : '';
                 return '<div style="padding:12px;border:1px solid var(--border-color);border-radius:14px;margin-bottom:10px;background:var(--primary-bg);font-size:13px;line-height:1.6;">' + a.q.replace(/[<>&]/g, '') + ans +
                     '<div style="display:flex;gap:8px;margin-top:8px;"><input class="sq-ans" data-i="' + i + '" placeholder="回答我呀…" style="flex:1;padding:8px 10px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;outline:none;">' +
