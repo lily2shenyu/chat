@@ -145,6 +145,7 @@ function loadMoreHistory() {
                 colorTheme: "gold",
                 soundEnabled: true,
                 puzzleCards: false,
+                puzzleCount: 0,
                 typingIndicatorEnabled: true,
                 readReceiptsEnabled: true,
                 replyEnabled: true,
@@ -1691,7 +1692,12 @@ if (partnerPersonas && partnerPersonas.length > 0 && Math.random() < 0.3) {
                 return;
             }
 
-const puzzleCount = settings.puzzleCards ? (1 + Math.floor(Math.random() * Math.min(5, (customReplies || []).length))) : 1;
+const _puzzleFixed = settings.puzzleCards ? (parseInt(settings.puzzleCount, 10) || 0) : 0;
+            const puzzleCount = settings.puzzleCards
+                ? (_puzzleFixed > 0
+                    ? Math.max(1, Math.min(_puzzleFixed, Math.max(1, (customReplies || []).length)))
+                    : (1 + Math.floor(Math.random() * Math.min(5, (customReplies || []).length))))
+                : 1;
             const replyCount = settings.puzzleCards ? 1 : (Math.random() < 0.75 ? 1 : (Math.random() < 0.95 ? 2 : 3));
             if (!customReplies || customReplies.length === 0) {
                 showNotification('回复库为空，请先到「自定义回复」中添加内容', 'info', 3500);
