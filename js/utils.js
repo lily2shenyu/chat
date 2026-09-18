@@ -83,6 +83,23 @@ function deduplicateContentArray(arr, baseSystemArray = []) {
         }
 
         function downloadFileFallback(blob, fileName) {
+            /* app 内：交给原生真正写进手机「下载」目录（栗栗 2026-09-19，所有导出的总闸） */
+            try {
+                if (window.AndroidBridge && typeof window.AndroidBridge.saveFile === 'function' && blob && blob.size) {
+                    const reader = new FileReader();
+                    reader.onload = function () {
+                        try {
+                            const res = String(reader.result || '');
+                            const b64 = res.indexOf(',') >= 0 ? res.slice(res.indexOf(',') + 1) : res;
+                            window.AndroidBridge.saveFile(b64, fileName, blob.type || 'application/octet-stream');
+                            if (typeof showNotification === 'function') showNotification('已保存到「下载」：' + fileName, 'success', 4500);
+                        } catch (e) {}
+                    };
+                    reader.onerror = function () { /* 落回浏览器方式 */ };
+                    reader.readAsDataURL(blob);
+                    return;
+                }
+            } catch (e) {}
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url; link.download = fileName; link.style.display = 'none';
