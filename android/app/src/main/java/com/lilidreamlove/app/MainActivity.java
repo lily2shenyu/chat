@@ -181,6 +181,55 @@ public class MainActivity extends Activity {
     }
 
         private class Bridge {
+            private java.io.OutputStream mOut = null;
+
+            /** 分块写入：大备份也不会一次挤爆（栗栗 2026-09-19） */
+            @android.webkit.JavascriptInterface
+            public void fileStart(String fileName, String mimeType) {
+                try {
+                    if (mOut != null) { try { mOut.close(); } catch (Exception e) {} mOut = null; }
+                    String name = (fileName == null || fileName.isEmpty()) ? ("love_backup_" + System.currentTimeMillis()) : fileName;
+                    String mime = (mimeType == null || mimeType.isEmpty()) ? "application/octet-stream" : mimeType;
+                    if (Build.VERSION.SDK_INT >= 29) {
+                        android.content.ContentValues values = new android.content.ContentValues();
+                        values.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
+                        values.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime);
+                        values.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
+                        android.net.Uri uri = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                        if (uri != null) mOut = getContentResolver().openOutputStream(uri);
+                    } else {
+                        java.io.File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                        if (!dir.exists()) dir.mkdirs();
+                        mOut = new java.io.FileOutputStream(new java.io.File(dir, name));
+                    }
+                } catch (Exception e) {
+                    mOut = null;
+                }
+            }
+
+            @android.webkit.JavascriptInterface
+            public void fileChunk(String base64Chunk) {
+                try {
+                    if (mOut == null || base64Chunk == null) return;
+                    byte[] b = android.util.Base64.decode(base64Chunk, android.util.Base64.DEFAULT);
+                    mOut.write(b);
+                    mOut.flush();
+                } catch (Exception e) {
+                }
+            }
+
+            @android.webkit.JavascriptInterface
+            public void fileEnd() {
+                try {
+                    if (mOut != null) {
+                        mOut.flush();
+                        mOut.close();
+                    }
+                } catch (Exception e) {
+                }
+                mOut = null;
+            }
+
             /** 把网页导出的文件真正写进手机「下载」目录（栗栗 2026-09-19：不要让导出空欢喜） */
             @android.webkit.JavascriptInterface
             public void saveFile(String base64Data, String fileName, String mimeType) {

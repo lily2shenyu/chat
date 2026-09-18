@@ -83,20 +83,33 @@ function deduplicateContentArray(arr, baseSystemArray = []) {
         }
 
         function downloadFileFallback(blob, fileName) {
-            /* app 内：交给原生真正写进手机「下载」目录（栗栗 2026-09-19，所有导出的总闸） */
+            /* app 内：分块交给原生，真正写进手机「下载」目录（栗栗 2026-09-19） */
             try {
-                if (window.AndroidBridge && typeof window.AndroidBridge.saveFile === 'function' && blob && blob.size) {
-                    const reader = new FileReader();
-                    reader.onload = function () {
-                        try {
-                            const res = String(reader.result || '');
-                            const b64 = res.indexOf(',') >= 0 ? res.slice(res.indexOf(',') + 1) : res;
-                            window.AndroidBridge.saveFile(b64, fileName, blob.type || 'application/octet-stream');
-                            if (typeof showNotification === 'function') showNotification('已保存到「下载」：' + fileName, 'success', 4500);
-                        } catch (e) {}
+                if (window.AndroidBridge && typeof window.AndroidBridge.fileStart === 'function' && blob && blob.size) {
+                    const CHUNK = 128 * 1024;
+                    let offset = 0;
+                    window.AndroidBridge.fileStart(fileName, blob.type || 'application/octet-stream');
+                    const step = function () {
+                        if (offset >= blob.size) {
+                            try { window.AndroidBridge.fileEnd(); } catch (e) {}
+                            if (typeof showNotification === 'function') showNotification('已保存到「下载」：' + fileName, 'success', 5000);
+                            return;
+                        }
+                        const slice = blob.slice(offset, Math.min(offset + CHUNK, blob.size));
+                        offset += CHUNK;
+                        const fr = new FileReader();
+                        fr.onload = function () {
+                            try {
+                                const res = String(fr.result || '');
+                                const b64 = res.indexOf(',') >= 0 ? res.slice(res.indexOf(',') + 1) : res;
+                                window.AndroidBridge.fileChunk(b64);
+                            } catch (e) {}
+                            step();
+                        };
+                        fr.onerror = function () { try { window.AndroidBridge.fileEnd(); } catch (e) {} };
+                        fr.readAsDataURL(slice);
                     };
-                    reader.onerror = function () { /* 落回浏览器方式 */ };
-                    reader.readAsDataURL(blob);
+                    step();
                     return;
                 }
             } catch (e) {}
