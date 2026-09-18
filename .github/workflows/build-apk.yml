@@ -18,8 +18,16 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Android SDK (preinstalled)
+        run: |
+          echo "SDK=$ANDROID_HOME"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f 2>/dev/null | head -1); fi
+          echo "sdkmanager=$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" "platform-tools" > /dev/null 2>&1 || true
+          echo "--- platforms ---"; ls "$ANDROID_HOME/platforms" || true
+          echo "--- build-tools ---"; ls "$ANDROID_HOME/build-tools" || true
 
       - name: Cache signing keystore
         uses: actions/cache@v4
