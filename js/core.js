@@ -1622,7 +1622,7 @@ if (!isBatchMode && type === 'normal') {
             var inputArea = document.querySelector('.input-area-wrapper');
             if (!tiW || !inputArea) return;
             var h = inputArea.offsetHeight;
-            tiW.style.bottom = h + 'px';
+            tiW.style.bottom = Math.max(2, h - 4) + 'px';
         }
         (function() {
             var inputArea = document.querySelector('.input-area-wrapper');
@@ -1639,6 +1639,11 @@ if (!isBatchMode && type === 'normal') {
                 if (tiW && tiW.style.display !== 'none') positionTypingIndicator();
             });
             ro.observe(inputArea);
+        })();
+        (function(){
+            function reposition(){ var tiW = document.getElementById('typing-indicator-wrapper'); if (tiW && tiW.style.display !== 'none') positionTypingIndicator(); }
+            window.addEventListener('resize', reposition);
+            if (window.visualViewport) { window.visualViewport.addEventListener('resize', reposition); window.visualViewport.addEventListener('scroll', reposition); }
         })();
 
         window.simulateReply = function() {

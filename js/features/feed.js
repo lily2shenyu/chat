@@ -112,7 +112,7 @@
             '<input id="feed-bg-file" type="file" accept="image/*" style="display:none;">' +
             '</div>' +
             /* 内容区 */
-            '<div id="feed-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 12px 20px;background:#f0f2f5;"></div>';
+            '<div id="feed-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 12px 20px;background:#ffffff;"></div>';
         d.addEventListener('click', function (e) { if (e.target === d) close(); });
         document.body.appendChild(d);
         pageEl = d;
@@ -183,7 +183,7 @@
                 var f = feeds[i];
                 var isMe = f.from === 'me';
                 var person = isMe ? ME : TA;
-                h += '<div style="background:#ffffff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:12px;margin-bottom:10px;">';
+                h += '<div style="background:transparent;border-radius:0;box-shadow:none;padding:14px 2px 12px;margin-bottom:0;border-bottom:1px solid rgba(0,0,0,0.055);">';
                 h += '<div style="display:flex;align-items:center;margin-bottom:8px;">';
                 h += '<span style="margin-right:8px;">' + avatarHtml(person, 32) + '</span>';
                 h += '<span style="font-size:13px;font-weight:600;color:#1a1a1a;">' + esc(person.name) + '</span>';
@@ -194,7 +194,7 @@
                     h += '<img src="' + f.img + '" style="max-width:100%;border-radius:10px;margin-top:8px;display:block;max-height:220px;object-fit:cover;">';
                 }
                 var liked = f.likes.indexOf(ME.name) >= 0;
-                h += '<div style="display:flex;align-items:center;gap:16px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.06);">';
+                h += '<div style="display:flex;align-items:center;gap:16px;margin-top:6px;padding-top:6px;border-top:none;">';
                 h += '<span id="like-' + f.id + '" style="font-size:12px;cursor:pointer;color:' + (liked ? '#e04f5f' : '#777') + ';">' + (liked ? '❤️ 已赞' : '🤍 赞') + '</span>';
                 h += '<span id="cmt-' + f.id + '" style="font-size:12px;cursor:pointer;color:#777;">💬 评论</span>';
                 if (f.likes.length) {
