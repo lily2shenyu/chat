@@ -181,6 +181,38 @@ public class MainActivity extends Activity {
     }
 
         private class Bridge {
+            /** 把网页导出的文件真正写进手机「下载」目录（栗栗 2026-09-19：不要让导出空欢喜） */
+            @android.webkit.JavascriptInterface
+            public void saveFile(String base64Data, String fileName, String mimeType) {
+                try {
+                    if (base64Data == null || base64Data.isEmpty()) return;
+                    byte[] bytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT);
+                    String name = (fileName == null || fileName.isEmpty()) ? ("love_backup_" + System.currentTimeMillis() + ".json") : fileName;
+                    String mime = (mimeType == null || mimeType.isEmpty()) ? "application/octet-stream" : mimeType;
+                    if (Build.VERSION.SDK_INT >= 29) {
+                        android.content.ContentValues values = new android.content.ContentValues();
+                        values.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
+                        values.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime);
+                        values.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
+                        android.net.Uri uri = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                        if (uri != null) {
+                            java.io.OutputStream os = getContentResolver().openOutputStream(uri);
+                            if (os != null) {
+                                os.write(bytes);
+                                os.close();
+                            }
+                        }
+                    } else {
+                        java.io.File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                        if (!dir.exists()) dir.mkdirs();
+                        java.io.FileOutputStream fos = new java.io.FileOutputStream(new java.io.File(dir, name));
+                        fos.write(bytes);
+                        fos.close();
+                    }
+                } catch (Exception e) {
+                }
+            }
+
             @android.webkit.JavascriptInterface
             public void notify(String title, String body) {
                 NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);

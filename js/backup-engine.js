@@ -255,6 +255,25 @@
     }
 
     function downloadBlob(blob, fileName) {
+        /* app 内：交给原生写进手机「下载」目录，不让导出空欢喜（栗栗 2026-09-19） */
+        try {
+            if (window.AndroidBridge && typeof window.AndroidBridge.saveFile === 'function' && blob && blob.size) {
+                var reader = new FileReader();
+                reader.onload = function () {
+                    try {
+                        var res = String(reader.result || '');
+                        var b64 = res.indexOf(',') >= 0 ? res.slice(res.indexOf(',') + 1) : res;
+                        window.AndroidBridge.saveFile(b64, fileName, blob.type || 'application/octet-stream');
+                        if (typeof showNotification === 'function') showNotification('已保存到「下载」：' + fileName, 'success', 4500);
+                    } catch (e) {}
+                };
+                reader.onerror = function () {
+                    if (typeof downloadFileFallback === 'function') downloadFileFallback(blob, fileName);
+                };
+                reader.readAsDataURL(blob);
+                return;
+            }
+        } catch (e) {}
         if (typeof downloadFileFallback === 'function') {
             downloadFileFallback(blob, fileName);
             return;
