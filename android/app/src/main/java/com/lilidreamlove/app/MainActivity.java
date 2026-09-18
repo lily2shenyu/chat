@@ -101,6 +101,29 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new Bridge(), "AndroidBridge");
         webView.loadUrl("file:///android_asset/www/index.html");
         enterFullscreen();
+
+        startKeepAlive();
+    }
+
+    /* 保活：常驻前台服务 + 申请忽略电池优化 */
+    private void startKeepAlive() {
+        try {
+            Intent it = new Intent(this, KeepAliveService.class);
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(it);
+            else startService(it);
+        } catch (Exception e) {
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= 23) {
+                android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                    Intent i2 = new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    i2.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(i2);
+                }
+            }
+        } catch (Exception e) {
+        }
     }
 
     @Override
