@@ -1084,6 +1084,25 @@ if (_chatSettingsEl) _chatSettingsEl.addEventListener('click', () => {
                 });
             }
 
+            /* 拼字卡 · 句数（栗栗 2026-09-19：开关开了，该几句就是几句） */
+            (function bindPuzzleCount() {
+                const row = document.getElementById('puzzle-count-row');
+                const sel = document.getElementById('puzzle-count-select');
+                if (!row || !sel) return;
+                const sync = () => {
+                    row.style.display = settings.puzzleCards ? 'flex' : 'none';
+                    sel.value = String(parseInt(settings.puzzleCount, 10) || 0);
+                };
+                sync();
+                sel.addEventListener('change', () => {
+                    settings.puzzleCount = parseInt(sel.value, 10) || 0;
+                    throttledSaveData();
+                    showNotification(settings.puzzleCount > 0 ? ('拼字卡：每次 ' + settings.puzzleCount + ' 句') : '拼字卡：句数随机', 'success');
+                });
+                const tg = document.getElementById('puzzle-toggle');
+                if (tg) tg.addEventListener('click', () => setTimeout(sync, 0));
+            })();
+
             const soundVolSlider = document.getElementById('sound-volume-slider');
             const soundVolVal = document.getElementById('sound-volume-value');
             if (soundVolSlider) {
