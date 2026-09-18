@@ -334,6 +334,9 @@
                     <button class="collapsed-extra-btn" title="召唤沈屿" onclick="(function(){document.getElementById('collapsed-extras-panel').style.display='none';document.getElementById('collapse-expand-btn').classList.remove('open');if(window.openSummon)window.openSummon();})();">
                         <i class="fas fa-hands-helping"></i>
                     </button>
+                    <button class="collapsed-extra-btn" title="送礼" onclick="(function(){document.getElementById('collapsed-extras-panel').style.display='none';document.getElementById('collapse-expand-btn').classList.remove('open');if(window.openGiftModal)window.openGiftModal();})();">
+                        <i class="fas fa-gift"></i>
+                    </button>
                     <button class="collapsed-extra-btn" title="退出收纳" onclick="window.exitCollapseMode && window.exitCollapseMode()" style="color:#ff5050; background:rgba(255,80,80,0.1);">
                         <i class="fas fa-times"></i>
                     </button>
@@ -347,8 +350,6 @@
     <button class="combo-btn input-btn collapse-hideable" id="combo-btn" title="表情 & 拍一拍">
         <i class="fas fa-laugh-beam"></i>
     </button>
-    <button class="input-btn" id="gift-open-btn" title="送礼" onclick="openGiftModal()" style="width:36px;height:36px;border:none;border-radius:50%;cursor:pointer;background:rgba(var(--accent-color-rgb),0.12);color:var(--accent-color);font-size:15px;flex-shrink:0;align-items:center;justify-content:center;"><i class="fas fa-gift"></i></button>
-
     <textarea class="message-input" id="message-input" placeholder="" rows="1"></textarea>
     
     <div class="input-buttons">
@@ -1096,6 +1097,19 @@
                             <span class="setting-pill-icon"><i class="fas fa-puzzle-piece"></i></span>
                             <span class="setting-pill-label">拼字卡</span>
                             <div class="setting-pill-switch"><div class="setting-pill-knob"></div></div>
+                        </div>
+                        <div class="setting-pill-row" id="puzzle-count-row" style="display:none;">
+                            <span class="setting-pill-icon"><i class="fas fa-hashtag"></i></span>
+                            <span class="setting-pill-label">拼几句</span>
+                            <select id="puzzle-count-select" style="margin-left:auto;padding:6px 10px;border-radius:10px;border:1px solid var(--border-color);background:var(--primary-bg);color:var(--text-primary);font-size:12px;outline:none;">
+                                <option value="0">随机</option>
+                                <option value="1">1 句</option>
+                                <option value="2">2 句</option>
+                                <option value="3">3 句</option>
+                                <option value="4">4 句</option>
+                                <option value="5">5 句</option>
+                                <option value="6">6 句</option>
+                            </select>
                         </div>
                         <div class="setting-pill-row" id="read-receipts-toggle">
                             <span class="setting-pill-icon"><i class="fas fa-check-double"></i></span>
