@@ -102,17 +102,17 @@
             '<button id="feed-pub" style="background:none;border:none;font-size:14px;color:#1a1a1a;padding:8px;cursor:pointer;font-weight:600;">✎ 发布</button>' +
             '</div>' +
             /* 封面：自己的头像在右边 + 可自定义背景 */
-            '<div id="feed-cover" style="flex-shrink:0;height:240px;background-color:#e9eef2;position:relative;background-size:cover;background-repeat:no-repeat;background-position:center;cursor:pointer;">' +
+            '<div id="feed-cover" style="flex-shrink:0;height:240px;background-color:#f0f2f5;position:relative;background-size:cover;background-repeat:no-repeat;background-position:center;cursor:pointer;">' +
             '<img id="feed-cover-img" alt="" style="display:none;">' +
             '<span style="position:absolute;top:10px;right:12px;font-size:13px;background:rgba(0,0,0,0.25);border-radius:12px;padding:4px 9px;color:#fff;">📷 换背景</span>' +
-            '<div style="position:absolute;right:14px;bottom:-24px;display:flex;align-items:center;gap:10px;">' +
+            '<div style="position:absolute;right:14px;bottom:14px;display:flex;align-items:center;gap:10px;">' +
             '<span id="feed-cover-name" style="font-size:17px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.3);"></span>' +
             '<span id="feed-cover-av" style="width:56px;height:56px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.12);"></span>' +
             '</div>' +
             '<input id="feed-bg-file" type="file" accept="image/*" style="display:none;">' +
             '</div>' +
             /* 内容区 */
-            '<div id="feed-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:36px 12px 20px;background:#f0f2f5;"></div>';
+            '<div id="feed-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 12px 20px;background:#f0f2f5;"></div>';
         d.addEventListener('click', function (e) { if (e.target === d) close(); });
         document.body.appendChild(d);
         pageEl = d;
