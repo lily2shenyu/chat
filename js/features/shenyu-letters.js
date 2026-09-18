@@ -5,13 +5,35 @@
  * ========================================================= */
 (function () {
     var KEY = 'shenyuActiveLetterTs';
+    var DAY_KEY = 'shenyuActiveLetterDay';
+    var MAX_PER_DAY = 2;   /* 栗栗 2026-09-19：写信每天最多两封，多了就轻了 */
+
+    function todayKey() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function dayCount() {
+        try {
+            var raw = localStorage.getItem(DAY_KEY);
+            var o = raw ? JSON.parse(raw) : null;
+            if (o && o.date === todayKey()) return o.count || 0;
+        } catch (e) {}
+        return 0;
+    }
+    function bumpDayCount() {
+        try {
+            localStorage.setItem(DAY_KEY, JSON.stringify({ date: todayKey(), count: dayCount() + 1 }));
+        } catch (e) {}
+    }
 
     function maybeSendLetter() {
         try {
+            if (dayCount() >= MAX_PER_DAY) return;   /* 今天已经写够两封 */
             var last = 0;
             try { last = parseInt(localStorage.getItem(KEY) || '0', 10) || 0; } catch (e) {}
             var now = Date.now();
-            var interval = (20 + Math.random() * 130) * 60 * 1000;
+            /* 两封之间至少隔 5 小时，最多 10 小时 */
+            var interval = (5 * 60 + Math.random() * 300) * 60 * 1000;
             if (last && (now - last) < interval) return;
 
             var pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
@@ -42,6 +64,7 @@
                 }
             }
             try { localStorage.setItem(KEY, String(now)); } catch (e) {}
+            bumpDayCount();
         } catch (e) {}
     }
 
