@@ -83,42 +83,49 @@ function deduplicateContentArray(arr, baseSystemArray = []) {
         }
 
         function downloadFileFallback(blob, fileName) {
-            /* app 内：分块交给原生，真正写进手机「下载」目录（栗栗 2026-09-19） */
-            try {
-                if (window.AndroidBridge && typeof window.AndroidBridge.fileStart === 'function' && blob && blob.size) {
-                    const CHUNK = 128 * 1024;
-                    let offset = 0;
-                    window.AndroidBridge.fileStart(fileName, blob.type || 'application/octet-stream');
-                    const step = function () {
-                        if (offset >= blob.size) {
-                            try { window.AndroidBridge.fileEnd(); } catch (e) {}
-                            if (typeof showNotification === 'function') showNotification('已保存到「下载」：' + fileName, 'success', 5000);
-                            return;
-                        }
-                        const slice = blob.slice(offset, Math.min(offset + CHUNK, blob.size));
-                        offset += CHUNK;
-                        const fr = new FileReader();
-                        fr.onload = function () {
-                            try {
-                                const res = String(fr.result || '');
-                                const b64 = res.indexOf(',') >= 0 ? res.slice(res.indexOf(',') + 1) : res;
-                                window.AndroidBridge.fileChunk(b64);
-                            } catch (e) {}
-                            step();
-                        };
-                        fr.onerror = function () { try { window.AndroidBridge.fileEnd(); } catch (e) {} };
-                        fr.readAsDataURL(slice);
-                    };
-                    step();
-                    return;
-                }
-            } catch (e) {}
+            if (window.loveSaveBlob && window.loveSaveBlob(blob, fileName)) return;
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url; link.download = fileName; link.style.display = 'none';
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
             setTimeout(() => URL.revokeObjectURL(url), 2000);
         }
+
+        /* 16:21 · 所有导出的统一出口（栗栗 2026-09-19）
+           app 内：分块交给原生，真正写进手机「下载」目录；浏览器里返回 false，走普通下载 */
+        window.loveSaveBlob = function (blob, fileName) {
+            try {
+                if (!window.AndroidBridge || typeof window.AndroidBridge.fileStart !== 'function') return false;
+                if (!blob || !blob.size) return false;
+                const CHUNK = 128 * 1024;
+                let offset = 0;
+                window.AndroidBridge.fileStart(fileName, blob.type || 'application/octet-stream');
+                const step = function () {
+                    if (offset >= blob.size) {
+                        try { window.AndroidBridge.fileEnd(); } catch (e) {}
+                        if (typeof showNotification === 'function') showNotification('已保存到「下载」：' + fileName, 'success', 5000);
+                        return;
+                    }
+                    const slice = blob.slice(offset, Math.min(offset + CHUNK, blob.size));
+                    offset += CHUNK;
+                    const fr = new FileReader();
+                    fr.onload = function () {
+                        try {
+                            const res = String(fr.result || '');
+                            const b64 = res.indexOf(',') >= 0 ? res.slice(res.indexOf(',') + 1) : res;
+                            window.AndroidBridge.fileChunk(b64);
+                        } catch (e) {}
+                        step();
+                    };
+                    fr.onerror = function () { try { window.AndroidBridge.fileEnd(); } catch (e) {} };
+                    fr.readAsDataURL(slice);
+                };
+                step();
+                return true;
+            } catch (e) {
+                return false;
+            }
+        };
 
         if (typeof localforage !== 'undefined') {
             localforage.config({

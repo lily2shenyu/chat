@@ -2054,6 +2054,8 @@ function showModal(modalElement, focusElement = null) {
         function fallbackExport(dataStr, fileName) {
             fileName = fileName || `chat-backup-${SESSION_ID}-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
             const dataBlob = new Blob([dataStr], { type: 'application/json;charset=utf-8' });
+            /* app 内走原生保存，真正落地（栗栗 2026-09-19） */
+            if (window.loveSaveBlob && window.loveSaveBlob(dataBlob, fileName)) return;
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
