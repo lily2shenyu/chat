@@ -102,7 +102,8 @@
             '<button id="feed-pub" style="background:none;border:none;font-size:14px;color:#1a1a1a;padding:8px;cursor:pointer;font-weight:600;">✎ 发布</button>' +
             '</div>' +
             /* 封面：自己的头像在右边 + 可自定义背景 */
-            '<div id="feed-cover" style="flex-shrink:0;height:150px;background:linear-gradient(135deg,#a8d8ea 0%,#cfe9f7 45%,#f5d0e0 100%);position:relative;background-size:cover;background-position:center;cursor:pointer;">' +
+            '<div id="feed-cover" style="flex-shrink:0;min-height:150px;background:linear-gradient(135deg,#a8d8ea 0%,#cfe9f7 45%,#f5d0e0 100%);position:relative;cursor:pointer;">' +
+            '<img id="feed-cover-img" alt="" style="display:none;width:100%;height:auto;vertical-align:bottom;">' +
             '<span style="position:absolute;top:10px;right:12px;font-size:13px;background:rgba(0,0,0,0.25);border-radius:12px;padding:4px 9px;color:#fff;">📷 换背景</span>' +
             '<div style="position:absolute;right:14px;bottom:-24px;display:flex;align-items:center;gap:10px;">' +
             '<span id="feed-cover-name" style="font-size:17px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.3);"></span>' +
@@ -143,8 +144,14 @@
     function applyBg() {
         var c = pageEl ? pageEl.querySelector('#feed-cover') : null;
         if (!c) return;
-        if (feedBg) c.style.backgroundImage = 'url("' + feedBg + '")';
-        else c.style.backgroundImage = '';
+        var img = c.querySelector('#feed-cover-img');
+        if (feedBg) {
+            if (img) { img.src = feedBg; img.style.display = 'block'; }
+            c.style.minHeight = '0';
+        } else {
+            if (img) { img.style.display = 'none'; img.removeAttribute('src'); }
+            c.style.minHeight = '150px';
+        }
     }
     function changeBg() {
         var fi = document.getElementById('feed-bg-file');
