@@ -102,7 +102,7 @@
             '<button id="feed-pub" style="background:none;border:none;font-size:14px;color:#1a1a1a;padding:8px;cursor:pointer;font-weight:600;">✎ 发布</button>' +
             '</div>' +
             /* 封面：自己的头像在右边 + 可自定义背景 */
-            '<div id="feed-cover" style="flex-shrink:0;height:200px;background-color:#e9eef2;position:relative;background-size:contain;background-repeat:no-repeat;background-position:center;cursor:pointer;">' +
+            '<div id="feed-cover" style="flex-shrink:0;height:240px;background-color:#e9eef2;position:relative;background-size:cover;background-repeat:no-repeat;background-position:center;cursor:pointer;">' +
             '<img id="feed-cover-img" alt="" style="display:none;">' +
             '<span style="position:absolute;top:10px;right:12px;font-size:13px;background:rgba(0,0,0,0.25);border-radius:12px;padding:4px 9px;color:#fff;">📷 换背景</span>' +
             '<div style="position:absolute;right:14px;bottom:-24px;display:flex;align-items:center;gap:10px;">' +
@@ -144,7 +144,7 @@
     function applyBg() {
         var c = pageEl ? pageEl.querySelector('#feed-cover') : null;
         if (!c) return;
-        /* 栗栗 2026-09-19：不预设背景；有图就整张显示（contain），高度收住，不占满一屏 */
+        /* 栗栗 2026-09-19 04:50：要像微信那样——封面图铺满整条、不留白（cover），高度 240px */
         if (feedBg) {
             c.style.backgroundImage = 'url("' + feedBg + '")';
         } else {
