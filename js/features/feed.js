@@ -102,7 +102,7 @@
             '<button id="feed-pub" style="background:none;border:none;font-size:14px;color:#1a1a1a;padding:8px;cursor:pointer;font-weight:600;">✎ 发布</button>' +
             '</div>' +
             /* 封面：自己的头像在右边 + 可自定义背景 */
-            '<div id="feed-cover" style="flex-shrink:0;height:38vh;min-height:140px;max-height:320px;background-color:#e9eef2;position:relative;background-size:contain;background-repeat:no-repeat;background-position:center;cursor:pointer;">' +
+            '<div id="feed-cover" style="flex-shrink:0;height:200px;background-color:#e9eef2;position:relative;background-size:contain;background-repeat:no-repeat;background-position:center;cursor:pointer;">' +
             '<img id="feed-cover-img" alt="" style="display:none;">' +
             '<span style="position:absolute;top:10px;right:12px;font-size:13px;background:rgba(0,0,0,0.25);border-radius:12px;padding:4px 9px;color:#fff;">📷 换背景</span>' +
             '<div style="position:absolute;right:14px;bottom:-24px;display:flex;align-items:center;gap:10px;">' +
