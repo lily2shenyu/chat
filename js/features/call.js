@@ -632,6 +632,7 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
     }
 
     function endCall() {
+        ringtoneStop();
         if (!S.active) return;
         const dur = S.elapsed;
         S.active = false; S.startTime = null;
@@ -659,12 +660,123 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
             showNotification('通话已挂断', 'info', 2000);
     }
 
+    /* ============ 来电铃声（栗栗 2026-09-20） ============ */
+    const RING_KEY = 'callRingtoneV1';
+    let _ringTone = { data: null, name: '' };
+    let _ringAudio = null, _ringCtx = null, _ringLoop = null, _ringVib = null;
+
+    function loadRingtone() {
+        try {
+            if (!window.localforage) { refreshRingName(); return; }
+            localforage.getItem(RING_KEY).then(v => {
+                if (v && v.data) _ringTone = v;
+                refreshRingName();
+            }).catch(() => { refreshRingName(); });
+        } catch (e) { refreshRingName(); }
+    }
+    function refreshRingName() {
+        const el = document.getElementById('call-ringtone-name');
+        if (el) el.textContent = (_ringTone && _ringTone.data) ? ('自定义：' + (_ringTone.name || '已选择')) : '默认铃声（叮咚）';
+    }
+    function _ringBeep(ctx, f, t0, dur, vol) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(vol, t0 + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+        o.start(t0); o.stop(t0 + dur + 0.06);
+    }
+    function defaultRingStart() {
+        try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            if (!_ringCtx) _ringCtx = new AC();
+            const ctx = _ringCtx;
+            try { if (ctx.state === 'suspended') ctx.resume(); } catch (e) {}
+            const pattern = () => {
+                try {
+                    const t = ctx.currentTime + 0.02;
+                    _ringBeep(ctx, 880, t, 0.22, 0.20);
+                    _ringBeep(ctx, 660, t + 0.26, 0.30, 0.16);
+                } catch (e) {}
+            };
+            pattern();
+            _ringLoop = setInterval(pattern, 1750);
+        } catch (e) {}
+    }
+    function ringtoneStart() {
+        ringtoneStop();
+        let custom = false;
+        try {
+            if (_ringTone && _ringTone.data) {
+                const a = new Audio(_ringTone.data);
+                a.loop = true; a.volume = 1;
+                const p = a.play();
+                if (p && p.catch) p.catch(() => { defaultRingStart(); });
+                _ringAudio = a; custom = true;
+            }
+        } catch (e) { custom = false; }
+        if (!custom) defaultRingStart();
+        try {
+            if (navigator.vibrate) {
+                const buzz = () => { try { navigator.vibrate([450, 250, 450, 250]); } catch (e) {} };
+                buzz();
+                _ringVib = setInterval(buzz, 1900);
+            }
+        } catch (e) {}
+    }
+    function ringtoneStop() {
+        try { if (_ringAudio) { _ringAudio.pause(); _ringAudio.currentTime = 0; _ringAudio = null; } } catch (e) {}
+        if (_ringLoop) { clearInterval(_ringLoop); _ringLoop = null; }
+        if (_ringVib) { clearInterval(_ringVib); _ringVib = null; try { navigator.vibrate(0); } catch (e) {} }
+    }
+    function bindRingtoneUI() {
+        const file = document.getElementById('call-ringtone-file');
+        const pick = document.getElementById('call-ringtone-pick-btn');
+        if (pick) pick.addEventListener('click', () => { if (file) file.click(); });
+        if (file) file.addEventListener('change', e => {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            if (f.size > 8 * 1024 * 1024) { showNotification && showNotification('铃声太大了（限 8MB）', 'error', 2500); e.target.value = ''; return; }
+            const r = new FileReader();
+            r.onload = ev => {
+                _ringTone = { data: ev.target.result, name: f.name };
+                if (window.localforage) localforage.setItem(RING_KEY, _ringTone).catch(() => {});
+                refreshRingName();
+                if (typeof showNotification === 'function') showNotification('来电铃声已设为：' + f.name, 'success', 2500);
+            };
+            r.readAsDataURL(f);
+            e.target.value = '';
+        });
+        const test = document.getElementById('call-ringtone-test-btn');
+        if (test) test.addEventListener('click', () => {
+            ringtoneStart();
+            if (typeof showNotification === 'function') showNotification('试听中…', 'info', 1500);
+            setTimeout(ringtoneStop, 4200);
+        });
+        const reset = document.getElementById('call-ringtone-reset-btn');
+        if (reset) reset.addEventListener('click', () => {
+            _ringTone = { data: null, name: '' };
+            if (window.localforage) localforage.removeItem(RING_KEY).catch(() => {});
+            refreshRingName();
+            if (typeof showNotification === 'function') showNotification('已恢复默认铃声', 'success', 2000);
+        });
+        refreshRingName();
+    }
+
     function showIncomingCall() {
         if (!S.enabled || S.active) return;
         const ov = document.getElementById('call-incoming-overlay');
         if (!ov) return;
         fillAv('call-inc-avatar'); fillNm('call-inc-name');
         ov.classList.add('visible');
+        ringtoneStart();
+        try {
+            if (document.hidden && window.AndroidBridge && typeof window.AndroidBridge.notify === 'function') {
+                window.AndroidBridge.notify('📞 ' + getName() + ' 的来电', '邀请你视频通话，快接');
+            }
+        } catch (e) {}
         clearTimeout(S.incomingTimer);
 
         const autoRejectChance = 0.30;
@@ -673,6 +785,7 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
             S.incomingTimer = setTimeout(() => {
                 if (!ov.classList.contains('visible')) return;
                 ov.classList.remove('visible');
+                ringtoneStop();
                 const myName = (typeof settings !== 'undefined' && settings.myName) || '我';
                 const partnerName = getName();
                 const rejectLabels = [
@@ -688,6 +801,7 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
             S.incomingTimer = setTimeout(() => {
                 if (!ov.classList.contains('visible')) return;
                 ov.classList.remove('visible');
+                ringtoneStop();
                 const myName = (typeof settings !== 'undefined' && settings.myName) || '我';
                 sendCallEvent('fa-phone-slash', `${myName}未接听 ${getName()} 的来电`, null);
             }, 22000);
@@ -829,13 +943,13 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
     function bindEvents() {
         document.getElementById('call-inc-reject')?.addEventListener('click', () => {
             document.getElementById('call-incoming-overlay')?.classList.remove('visible');
-            clearTimeout(S.incomingTimer);
+            clearTimeout(S.incomingTimer); ringtoneStop();
             const myName = (typeof settings !== 'undefined' && settings.myName) || '我';
             sendCallEvent('fa-phone-slash', `${myName}拒绝了 ${getName()} 的通话`, null);
         });
         document.getElementById('call-inc-accept')?.addEventListener('click', () => {
             document.getElementById('call-incoming-overlay')?.classList.remove('visible');
-            clearTimeout(S.incomingTimer); startCall(true);
+            clearTimeout(S.incomingTimer); ringtoneStop(); startCall(true);
         });
 
         document.getElementById('call-hangup-btn')?.addEventListener('click', endCall);
@@ -899,6 +1013,8 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
         injectHTML();
         bindEvents();
         loadBg();
+        loadRingtone();
+        bindRingtoneUI();
 
         const late = () => {
             injectToolbarBtn();

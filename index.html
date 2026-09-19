@@ -1205,6 +1205,18 @@
                                 <span class="notif-toggle-slider"></span>
                             </label>
                         </div>
+                        <div id="call-ringtone-row" style="display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px solid var(--border-color);margin-top:10px;">
+                            <div style="display:flex;align-items:center;">
+                                <span class="setting-pill-icon"><i class="fas fa-music"></i></span>
+                                <span class="setting-pill-label">来电铃声 <span id="call-ringtone-name" style="font-size:11px;color:var(--text-secondary);font-weight:400;">默认铃声（叮咚）</span></span>
+                            </div>
+                            <div style="display:flex;gap:6px;align-items:center;">
+                                <button id="call-ringtone-pick-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;"><i class="fas fa-upload"></i> 选铃声</button>
+                                <button id="call-ringtone-test-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;"><i class="fas fa-play"></i> 试听</button>
+                                <button id="call-ringtone-reset-btn" class="modal-btn modal-btn-secondary" style="padding:6px 10px;font-size:12px;white-space:nowrap;">恢复默认</button>
+                                <input type="file" id="call-ringtone-file" accept="audio/*" style="display:none;">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
