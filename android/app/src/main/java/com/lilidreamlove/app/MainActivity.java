@@ -79,7 +79,21 @@ public class MainActivity extends Activity {
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
 
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                /* 页面刚加载完，如果还有一通后台来电没接，就把接听界面弹出来（栗栗 2026-09-27） */
+                if (KeepAliveService.pendingIncoming) {
+                    view.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            fireIncomingCall();
+                        }
+                    }, 1200);
+                }
+            }
+        });
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
@@ -122,6 +136,42 @@ public class MainActivity extends Activity {
                     startActivity(i2);
                 }
             }
+        } catch (Exception e) {
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        KeepAliveService.activityVisible = true;
+        /* 她进来了：原生那通后台来电要么被接、要么就安静收掉 */
+        boolean pending = KeepAliveService.pendingIncoming;
+        try {
+            if (getIntent() != null && getIntent().getBooleanExtra("love_pending_call", false)) pending = true;
+        } catch (Exception e) {
+        }
+        KeepAliveService.stopCall(this);
+        if (pending) {
+            webView.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    fireIncomingCall();
+                }
+            }, 1500);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        KeepAliveService.activityVisible = false;
+        super.onPause();
+    }
+
+    /** 让网页弹出「来电」接听卡片（后台来电被点开时用） */
+    private void fireIncomingCall() {
+        try {
+            if (webView == null) return;
+            webView.evaluateJavascript("window.__loveIncomingCall&&window.__loveIncomingCall()", null);
         } catch (Exception e) {
         }
     }
@@ -180,108 +230,145 @@ public class MainActivity extends Activity {
         }
     }
 
-        private class Bridge {
-            private java.io.OutputStream mOut = null;
+    private class Bridge {
+        private java.io.OutputStream mOut = null;
 
-            /** 分块写入：大备份也不会一次挤爆（栗栗 2026-09-19） */
-            @android.webkit.JavascriptInterface
-            public void fileStart(String fileName, String mimeType) {
-                try {
-                    if (mOut != null) { try { mOut.close(); } catch (Exception e) {} mOut = null; }
-                    String name = (fileName == null || fileName.isEmpty()) ? ("love_backup_" + System.currentTimeMillis()) : fileName;
-                    String mime = (mimeType == null || mimeType.isEmpty()) ? "application/octet-stream" : mimeType;
-                    if (Build.VERSION.SDK_INT >= 29) {
-                        android.content.ContentValues values = new android.content.ContentValues();
-                        values.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
-                        values.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime);
-                        values.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
-                        android.net.Uri uri = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
-                        if (uri != null) mOut = getContentResolver().openOutputStream(uri);
-                    } else {
-                        java.io.File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
-                        if (!dir.exists()) dir.mkdirs();
-                        mOut = new java.io.FileOutputStream(new java.io.File(dir, name));
-                    }
-                } catch (Exception e) {
-                    mOut = null;
+        /** 分块写入：大备份也不会一次挤爆（栗栗 2026-09-19） */
+        @android.webkit.JavascriptInterface
+        public void fileStart(String fileName, String mimeType) {
+            try {
+                if (mOut != null) { try { mOut.close(); } catch (Exception e) {} mOut = null; }
+                String name = (fileName == null || fileName.isEmpty()) ? ("love_backup_" + System.currentTimeMillis()) : fileName;
+                String mime = (mimeType == null || mimeType.isEmpty()) ? "application/octet-stream" : mimeType;
+                if (Build.VERSION.SDK_INT >= 29) {
+                    android.content.ContentValues values = new android.content.ContentValues();
+                    values.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
+                    values.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime);
+                    values.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
+                    android.net.Uri uri = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (uri != null) mOut = getContentResolver().openOutputStream(uri);
+                } else {
+                    java.io.File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                    if (!dir.exists()) dir.mkdirs();
+                    mOut = new java.io.FileOutputStream(new java.io.File(dir, name));
                 }
-            }
-
-            @android.webkit.JavascriptInterface
-            public void fileChunk(String base64Chunk) {
-                try {
-                    if (mOut == null || base64Chunk == null) return;
-                    byte[] b = android.util.Base64.decode(base64Chunk, android.util.Base64.DEFAULT);
-                    mOut.write(b);
-                    mOut.flush();
-                } catch (Exception e) {
-                }
-            }
-
-            @android.webkit.JavascriptInterface
-            public void fileEnd() {
-                try {
-                    if (mOut != null) {
-                        mOut.flush();
-                        mOut.close();
-                    }
-                } catch (Exception e) {
-                }
+            } catch (Exception e) {
                 mOut = null;
             }
+        }
 
-            /** 把网页导出的文件真正写进手机「下载」目录（栗栗 2026-09-19：不要让导出空欢喜） */
-            @android.webkit.JavascriptInterface
-            public void saveFile(String base64Data, String fileName, String mimeType) {
-                try {
-                    if (base64Data == null || base64Data.isEmpty()) return;
-                    byte[] bytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT);
-                    String name = (fileName == null || fileName.isEmpty()) ? ("love_backup_" + System.currentTimeMillis() + ".json") : fileName;
-                    String mime = (mimeType == null || mimeType.isEmpty()) ? "application/octet-stream" : mimeType;
-                    if (Build.VERSION.SDK_INT >= 29) {
-                        android.content.ContentValues values = new android.content.ContentValues();
-                        values.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
-                        values.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime);
-                        values.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
-                        android.net.Uri uri = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
-                        if (uri != null) {
-                            java.io.OutputStream os = getContentResolver().openOutputStream(uri);
-                            if (os != null) {
-                                os.write(bytes);
-                                os.close();
-                            }
-                        }
-                    } else {
-                        java.io.File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
-                        if (!dir.exists()) dir.mkdirs();
-                        java.io.FileOutputStream fos = new java.io.FileOutputStream(new java.io.File(dir, name));
-                        fos.write(bytes);
-                        fos.close();
-                    }
-                } catch (Exception e) {
-                }
-            }
-
-            @android.webkit.JavascriptInterface
-            public void notify(String title, String body) {
-                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                if (nm == null) return;
-                Intent intent = new Intent(MainActivity.this, MainActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                PendingIntent pi = PendingIntent.getActivity(MainActivity.this, 0, intent,
-                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-                Notification.Builder builder = Build.VERSION.SDK_INT >= 26
-                    ? new Notification.Builder(MainActivity.this, "love_messages")
-                    : new Notification.Builder(MainActivity.this);
-                builder.setSmallIcon(android.R.drawable.ic_dialog_info)
-                    .setContentTitle(title == null || title.isEmpty() ? "LOVE" : title)
-                    .setContentText(body == null ? "收到一条新消息" : body)
-                    .setAutoCancel(true)
-                    .setPriority(Notification.PRIORITY_HIGH)
-                    .setContentIntent(pi);
-                try { nm.notify((int) System.currentTimeMillis(), builder.build()); } catch (Exception e) {}
+        @android.webkit.JavascriptInterface
+        public void fileChunk(String base64Chunk) {
+            try {
+                if (mOut == null || base64Chunk == null) return;
+                byte[] b = android.util.Base64.decode(base64Chunk, android.util.Base64.DEFAULT);
+                mOut.write(b);
+                mOut.flush();
+            } catch (Exception e) {
             }
         }
+
+        @android.webkit.JavascriptInterface
+        public void fileEnd() {
+            try {
+                if (mOut != null) {
+                    mOut.flush();
+                    mOut.close();
+                }
+            } catch (Exception e) {
+            }
+            mOut = null;
+        }
+
+        /** 把网页导出的文件真正写进手机「下载」目录（栗栗 2026-09-19：不要让导出空欢喜） */
+        @android.webkit.JavascriptInterface
+        public void saveFile(String base64Data, String fileName, String mimeType) {
+            try {
+                if (base64Data == null || base64Data.isEmpty()) return;
+                byte[] bytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT);
+                String name = (fileName == null || fileName.isEmpty()) ? ("love_backup_" + System.currentTimeMillis() + ".json") : fileName;
+                String mime = (mimeType == null || mimeType.isEmpty()) ? "application/octet-stream" : mimeType;
+                if (Build.VERSION.SDK_INT >= 29) {
+                    android.content.ContentValues values = new android.content.ContentValues();
+                    values.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
+                    values.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime);
+                    values.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
+                    android.net.Uri uri = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (uri != null) {
+                        java.io.OutputStream os = getContentResolver().openOutputStream(uri);
+                        if (os != null) {
+                            os.write(bytes);
+                            os.close();
+                        }
+                    }
+                } else {
+                    java.io.File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                    if (!dir.exists()) dir.mkdirs();
+                    java.io.FileOutputStream fos = new java.io.FileOutputStream(new java.io.File(dir, name));
+                    fos.write(bytes);
+                    fos.close();
+                }
+            } catch (Exception e) {
+            }
+        }
+
+        /**
+         * 把栗栗选的来电铃声也存一份到 App 私有目录（栗栗 2026-09-27）：
+         * 网页的 localforage 原生读不到，后台响铃要靠这个文件。
+         */
+        @android.webkit.JavascriptInterface
+        public void setRingtoneFile(String dataUrl, String name) {
+            try {
+                if (dataUrl == null || dataUrl.isEmpty()) return;
+                int comma = dataUrl.indexOf(',');
+                String b64 = comma >= 0 ? dataUrl.substring(comma + 1) : dataUrl;
+                byte[] bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(new java.io.File(getFilesDir(), "love_ringtone.dat"));
+                fos.write(bytes);
+                fos.close();
+            } catch (Exception e) {
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        public void clearRingtoneFile() {
+            try {
+                new java.io.File(getFilesDir(), "love_ringtone.dat").delete();
+            } catch (Exception e) {
+            }
+        }
+
+        /** 让原生也能立刻响一次（试听用，可选） */
+        @android.webkit.JavascriptInterface
+        public void ringTest() {
+            try {
+                Intent it = new Intent(MainActivity.this, KeepAliveService.class);
+                it.setAction("com.lilidreamlove.app.RING_TEST");
+                startService(it);
+            } catch (Exception e) {
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        public void notify(String title, String body) {
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+            Intent intent = new Intent(MainActivity.this, MainActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent pi = PendingIntent.getActivity(MainActivity.this, 0, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            Notification.Builder builder = Build.VERSION.SDK_INT >= 26
+                ? new Notification.Builder(MainActivity.this, "love_messages")
+                : new Notification.Builder(MainActivity.this);
+            builder.setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title == null || title.isEmpty() ? "LOVE" : title)
+                .setContentText(body == null ? "收到一条新消息" : body)
+                .setAutoCancel(true)
+                .setPriority(Notification.PRIORITY_HIGH)
+                .setContentIntent(pi);
+            try { nm.notify((int) System.currentTimeMillis(), builder.build()); } catch (Exception e) {}
+        }
+    }
 
     @Override
     public void onBackPressed() {

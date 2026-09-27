@@ -671,6 +671,7 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
             localforage.getItem(RING_KEY).then(v => {
                 if (v && v.data) _ringTone = v;
                 refreshRingName();
+                pushRingtoneToNative();
             }).catch(() => { refreshRingName(); });
         } catch (e) { refreshRingName(); }
     }
@@ -744,6 +745,7 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
                 _ringTone = { data: ev.target.result, name: f.name };
                 if (window.localforage) localforage.setItem(RING_KEY, _ringTone).catch(() => {});
                 refreshRingName();
+                pushRingtoneToNative();
                 if (typeof showNotification === 'function') showNotification('来电铃声已设为：' + f.name, 'success', 2500);
             };
             r.readAsDataURL(f);
@@ -751,20 +753,63 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
         });
         const test = document.getElementById('call-ringtone-test-btn');
         if (test) test.addEventListener('click', () => {
+        pushRingtoneToNative();
+        let nativeOk = false;
+        try {
+            if (window.AndroidBridge && typeof AndroidBridge.ringTest === 'function') {
+                AndroidBridge.ringTest();
+                nativeOk = true;
+            }
+        } catch (e) {}
+        if (nativeOk) {
+            if (typeof showNotification === 'function') showNotification('试听中…（走原生，后台也会响）', 'info', 1800);
+        } else {
             ringtoneStart();
             if (typeof showNotification === 'function') showNotification('试听中…', 'info', 1500);
             setTimeout(ringtoneStop, 4200);
+        }
         });
         const reset = document.getElementById('call-ringtone-reset-btn');
         if (reset) reset.addEventListener('click', () => {
             _ringTone = { data: null, name: '' };
             if (window.localforage) localforage.removeItem(RING_KEY).catch(() => {});
             refreshRingName();
+            clearRingtoneOnNative();
             if (typeof showNotification === 'function') showNotification('已恢复默认铃声', 'success', 2000);
         });
         refreshRingName();
     }
 
+    /* ==== 原生来电管家 <-> 网页的接头处（栗栗 2026-09-27）==== */
+    /* 把栗栗选的铃声也交给原生一份：LOVE 退到后台时由原生放 */
+    function pushRingtoneToNative() {
+        try {
+            if (!window.AndroidBridge) return;
+            if (_ringTone && _ringTone.data && typeof AndroidBridge.setRingtoneFile === 'function') {
+                AndroidBridge.setRingtoneFile(_ringTone.data, _ringTone.name || 'ringtone');
+            }
+        } catch (e) {}
+    }
+    function clearRingtoneOnNative() {
+        try {
+            if (window.AndroidBridge && typeof AndroidBridge.clearRingtoneFile === 'function') AndroidBridge.clearRingtoneFile();
+        } catch (e) {}
+    }
+    /* 原生在后台叫醒网页时，走的就是这个口子 */
+    window.__loveIncomingCall = function () {
+        try { if (S.enabled && !S.active) showIncomingCall(); } catch (e) {}
+    };
+    /* 退到后台就把随机来电交给原生管家，别两只手同时拨号 */
+    document.addEventListener('visibilitychange', function () {
+        try {
+            if (document.hidden) {
+                clearTimeout(S.randomCallTimer);
+                S.randomCallTimer = null;
+            } else if (S.enabled && !S.active) {
+                scheduleRandomCall();
+            }
+        } catch (e) {}
+    });
     function showIncomingCall() {
         if (!S.enabled || S.active) return;
         const ov = document.getElementById('call-incoming-overlay');
