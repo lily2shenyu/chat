@@ -728,6 +728,7 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
         } catch (e) {}
     }
     function ringtoneStop() {
+        try { if (window.AndroidBridge && AndroidBridge.setCallState) AndroidBridge.setCallState(!!S.active); } catch (e) {}
         if (S.nativeCall) {
             try { if (window.AndroidBridge && AndroidBridge.endNativeCall) AndroidBridge.endNativeCall(); } catch (e) {}
             S.nativeCall = false;
@@ -823,6 +824,8 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
         if (!ov) return;
         fillAv('call-inc-avatar'); fillNm('call-inc-name');
         ov.classList.add('visible');
+        /* 有来电了：告诉原生别再插第二通（栗栗 2026-09-27） */
+        try { if (window.AndroidBridge && AndroidBridge.setCallState) AndroidBridge.setCallState(true); } catch (e) {}
         /* 原生已经在响这一通了，网页就只管画面，别叠第二层声音（栗栗 2026-09-27） */
         if (!S.nativeCall) ringtoneStart();
         try {
@@ -1002,7 +1005,7 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
         });
         document.getElementById('call-inc-accept')?.addEventListener('click', () => {
             document.getElementById('call-incoming-overlay')?.classList.remove('visible');
-            clearTimeout(S.incomingTimer); ringtoneStop(); startCall(true);
+            clearTimeout(S.incomingTimer); ringtoneStop(); try { if (window.AndroidBridge && AndroidBridge.setCallState) AndroidBridge.setCallState(true); } catch (e) {} startCall(true);
         });
 
         document.getElementById('call-hangup-btn')?.addEventListener('click', endCall);

@@ -46,6 +46,8 @@ public class KeepAliveService extends Service {
     public static volatile boolean activityVisible = false;
     /** 有一次后台来电还没被她接起来 */
     public static volatile boolean pendingIncoming = false;
+    /** 她那边正在来电/通话中——这时候不许再插第二通（栗栗 2026-09-27） */
+    public static volatile boolean callActive = false;
 
     private static KeepAliveService sInstance = null;
 
@@ -69,7 +71,7 @@ public class KeepAliveService extends Service {
         @Override
         public void run() {
             try {
-                if (!ringing && !activityVisible && rnd.nextDouble() < 0.25) {
+                if (!ringing && !activityVisible && !callActive && rnd.nextDouble() < 0.25) {
                     startRinging();
                 }
             } catch (Exception e) {
@@ -91,7 +93,8 @@ public class KeepAliveService extends Service {
             // 拿不到前台权限也尽量活着
         }
         h.removeCallbacks(tick);
-        h.postDelayed(tick, 8 * 60 * 1000L);
+        /* 第一通别急着来：先安安静静过 15~60 分钟（栗栗 2026-09-27） */
+        h.postDelayed(tick, (15 + rnd.nextInt(46)) * 60L * 1000L);
     }
 
     private void createChannels() {
@@ -319,7 +322,7 @@ public class KeepAliveService extends Service {
                 h.postDelayed(stopRunnable, 10 * 1000L);
             } else if ("com.lilidreamlove.app.INCOMING".equals(action)) {
                 /* 沈屿远程叫她一次（栗栗 2026-09-27：想接到电话就能接到） */
-                if (!ringing && !activityVisible) startRinging();
+                if (!ringing && !callActive) startRinging();
             }
         }
         return START_STICKY;

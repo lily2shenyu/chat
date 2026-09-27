@@ -364,6 +364,15 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** 网页把「来电中/通话中」告诉原生，免得她在电话里被插第二通（栗栗 2026-09-27） */
+        @android.webkit.JavascriptInterface
+        public void setCallState(boolean active) {
+            try {
+                KeepAliveService.callActive = active;
+            } catch (Exception e) {
+            }
+        }
+
         /** 让原生也能立刻响一次（试听用，可选） */
         @android.webkit.JavascriptInterface
         public void ringTest() {
