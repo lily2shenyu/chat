@@ -150,7 +150,7 @@ public class MainActivity extends Activity {
             if (getIntent() != null && getIntent().getBooleanExtra("love_pending_call", false)) pending = true;
         } catch (Exception e) {
         }
-        KeepAliveService.stopCall(this);
+        /* 别在这里就把原生的铃声掐掉——她要听着铃声接起来（栗栗 2026-09-27） */
         if (pending) {
             webView.postDelayed(new Runnable() {
                 @Override
@@ -171,7 +171,7 @@ public class MainActivity extends Activity {
     private void fireIncomingCall() {
         try {
             if (webView == null) return;
-            webView.evaluateJavascript("window.__loveIncomingCall&&window.__loveIncomingCall()", null);
+            webView.evaluateJavascript("window.__loveIncomingCall&&window.__loveIncomingCall('native')", null);
         } catch (Exception e) {
         }
     }
@@ -351,6 +351,15 @@ public class MainActivity extends Activity {
         public void clearRingtoneFile() {
             try {
                 new java.io.File(getFilesDir(), "love_ringtone.dat").delete();
+            } catch (Exception e) {
+            }
+        }
+
+        /** 她接起或挂断时，反手把原生那通铃声收掉（栗栗 2026-09-27） */
+        @android.webkit.JavascriptInterface
+        public void endNativeCall() {
+            try {
+                KeepAliveService.stopCall(MainActivity.this);
             } catch (Exception e) {
             }
         }

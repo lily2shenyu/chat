@@ -728,6 +728,10 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
         } catch (e) {}
     }
     function ringtoneStop() {
+        if (S.nativeCall) {
+            try { if (window.AndroidBridge && AndroidBridge.endNativeCall) AndroidBridge.endNativeCall(); } catch (e) {}
+            S.nativeCall = false;
+        }
         try { if (_ringAudio) { _ringAudio.pause(); _ringAudio.currentTime = 0; _ringAudio = null; } } catch (e) {}
         if (_ringLoop) { clearInterval(_ringLoop); _ringLoop = null; }
         if (_ringVib) { clearInterval(_ringVib); _ringVib = null; try { navigator.vibrate(0); } catch (e) {} }
@@ -796,8 +800,11 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
         } catch (e) {}
     }
     /* 原生在后台叫醒网页时，走的就是这个口子 */
-    window.__loveIncomingCall = function () {
-        try { if (S.enabled && !S.active) showIncomingCall(); } catch (e) {}
+    window.__loveIncomingCall = function (fromNative) {
+        try {
+            S.nativeCall = (fromNative === 'native' || fromNative === true);
+            if (S.enabled && !S.active) showIncomingCall();
+        } catch (e) {}
     };
     /* 退到后台就把随机来电交给原生管家，别两只手同时拨号 */
     document.addEventListener('visibilitychange', function () {
@@ -816,7 +823,8 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
         if (!ov) return;
         fillAv('call-inc-avatar'); fillNm('call-inc-name');
         ov.classList.add('visible');
-        ringtoneStart();
+        /* 原生已经在响这一通了，网页就只管画面，别叠第二层声音（栗栗 2026-09-27） */
+        if (!S.nativeCall) ringtoneStart();
         try {
             if (document.hidden && window.AndroidBridge && typeof window.AndroidBridge.notify === 'function') {
                 window.AndroidBridge.notify('📞 ' + getName() + ' 的来电', '邀请你视频通话，快接');
