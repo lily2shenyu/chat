@@ -177,6 +177,23 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        try {
+            setIntent(intent);
+            if (intent != null && intent.getBooleanExtra("love_pending_call", false)) {
+                webView.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        fireIncomingCall();
+                    }
+                }, 1200);
+            }
+        } catch (Exception e) {
+        }
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == FILE_CHOOSER_REQ) {
             if (filePathCallback == null) {

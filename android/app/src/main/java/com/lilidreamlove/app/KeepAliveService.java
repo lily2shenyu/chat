@@ -317,6 +317,9 @@ public class KeepAliveService extends Service {
                 }
                 h.removeCallbacks(stopRunnable);
                 h.postDelayed(stopRunnable, 10 * 1000L);
+            } else if ("com.lilidreamlove.app.INCOMING".equals(action)) {
+                /* 沈屿远程叫她一次（栗栗 2026-09-27：想接到电话就能接到） */
+                if (!ringing && !activityVisible) startRinging();
             }
         }
         return START_STICKY;
