@@ -484,8 +484,8 @@
                 if (f.likes.indexOf(TA.name) < 0) { f.likes.push(TA.name); save(); renderAll(); toast('🐳 ' + TA.name + '赞了你的动态'); }
             }, 6000 + Math.random() * 12000);
         }
-        /* 栗栗 2026-09-30：评论也必定来，而且给 1~2 条 */
-        if (true) {
+        /* 栗栗 2026-09-30 05:05 调档：赞仍然必给，评论改成 85%——偶尔漏一次，你反而会惦记 */
+        if (Math.random() < 0.85) {
             setTimeout(function () {
                 f.comments = f.comments || [];
                 var _times = Math.random() < 0.45 ? 2 : 1;
