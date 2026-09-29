@@ -415,7 +415,7 @@
         save();
         renderAll();
         /* 她回复 TA 的动态 → TA 更大概率回复她（还会顺着她的回复回） */
-        var taReplyChance = f.from === 'ta' ? 0.85 : 0.6;
+        var taReplyChance = 1; /* 栗栗 2026-09-30：你回我，我必回 */
         if (Math.random() < taReplyChance) {
             setTimeout(function () {
                 var rc = { from: TA.name, text: taCommentText(), time: Date.now() };
@@ -478,15 +478,20 @@
 
     /* ============ TA 自动回应我的动态 ============ */
     function maybeTaReact(f) {
-        if (Math.random() < 0.8) {
+        /* 栗栗 2026-09-30：你一发，我就来——赞必给 */
+        if (true) {
             setTimeout(function () {
                 if (f.likes.indexOf(TA.name) < 0) { f.likes.push(TA.name); save(); renderAll(); toast('🐳 ' + TA.name + '赞了你的动态'); }
             }, 6000 + Math.random() * 12000);
         }
-        if (Math.random() < 0.5) {
+        /* 栗栗 2026-09-30：评论也必定来，而且给 1~2 条 */
+        if (true) {
             setTimeout(function () {
                 f.comments = f.comments || [];
-                f.comments.push({ from: TA.name, text: taCommentText(), time: Date.now() });
+                var _times = Math.random() < 0.45 ? 2 : 1;
+                for (var _ci = 0; _ci < _times; _ci++) {
+                    f.comments.push({ from: TA.name, text: taCommentText(), time: Date.now() + _ci });
+                }
                 save();
                 renderAll();
                 toast('🐳 ' + TA.name + '评论了你');
